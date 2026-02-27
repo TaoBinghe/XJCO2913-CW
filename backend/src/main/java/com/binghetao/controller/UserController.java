@@ -9,6 +9,7 @@ import com.binghetao.utils.JwtUtil;
 import com.binghetao.utils.ThreadLocalUtil;
 import jakarta.validation.constraints.Pattern;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -30,7 +31,7 @@ public class UserController {
     private BookingService bookingService;
 
     @PostMapping("/register")
-    public Result<?> register(@Pattern(regexp = "^\\S{5,16}$") String username, @Pattern(regexp = "^\\S{5,16}$") String password) {
+    public Result<?> register(String username, String password) {
         // Check if username already exists.
         User u = userService.findByUserName(username);
         if (u == null) {
@@ -42,7 +43,8 @@ public class UserController {
     }
 
     @PostMapping("/login")
-    public Result<?> login(@RequestParam("username") String username, @RequestParam("password") String password) {
+    public Result<?> login(@RequestParam("username") @Validated String username,
+                           @Validated @RequestParam("password") String password) {
         // Authenticate user in service layer with MyBatis-Plus query.
         User u = userService.login(username, password);
         if (u != null) {

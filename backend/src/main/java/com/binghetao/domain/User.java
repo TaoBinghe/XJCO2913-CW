@@ -3,6 +3,8 @@ package com.binghetao.domain;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -24,8 +26,12 @@ public class User {
     @TableId(type = IdType.AUTO)
     private Long id;
 
+    @NotEmpty
+    @Pattern(regexp = "^\\S{5,16}$")
     private String username;
 
+    @NotEmpty
+    @Pattern(regexp = "^\\S{5,16}$")
     private String password;
 
     private String email;

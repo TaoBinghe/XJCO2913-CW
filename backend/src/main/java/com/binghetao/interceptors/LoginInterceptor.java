@@ -15,7 +15,13 @@ import java.util.Map;
 public class LoginInterceptor implements HandlerInterceptor {
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
-        String token = request.getHeader("Authorization");
+        String auth = request.getHeader("Authorization");
+        if (auth == null || auth.isBlank()) {
+            response.setStatus(401);
+            return false;
+        }
+        // 支持 "Bearer <token>" 或直接 "<token>"
+        String token = auth.startsWith("Bearer ") ? auth.substring(7) : auth;
         try {
             Map<String, Object> claims = JwtUtil.parseToken(token);
 
