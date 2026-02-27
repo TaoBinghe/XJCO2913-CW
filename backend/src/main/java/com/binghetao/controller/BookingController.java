@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+// Booking API: list plans, book, activate
 @RestController
 @RequestMapping("/booking")
 public class BookingController {
@@ -15,12 +16,14 @@ public class BookingController {
     @Autowired
     private BookingService bookingService;
 
+    // List all pricing plans
     @GetMapping
     public Result<List<PricingPlan>> listPricingPlan() {
         List<PricingPlan> pricingPlans = bookingService.listPricingPlan();
         return Result.success(pricingPlans);
     }
 
+    // Create booking for scooter and period
     @PostMapping
     public Result<?> bookScooter(@RequestParam Integer scooterId, @RequestParam String hiredPeriod) {
         boolean success = bookingService.bookScooter(scooterId, hiredPeriod);
@@ -30,9 +33,7 @@ public class BookingController {
         return Result.error("Scooter is not available for the requested period");
     }
 
-    /**
-     * Activate a booking after the user confirms the selection on frontend.
-     */
+    // Activate booking after user confirms
     @PostMapping("/activate")
     public Result<?> activateBooking(@RequestParam Long bookingId) {
         boolean success = bookingService.activateBooking(bookingId);

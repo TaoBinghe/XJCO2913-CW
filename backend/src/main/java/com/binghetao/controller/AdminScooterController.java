@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
+// Admin scooter CRUD API
 @RestController
 @RequestMapping("/admin/scooter")
 public class AdminScooterController {
@@ -16,6 +17,7 @@ public class AdminScooterController {
     @Autowired
     private ScooterService scooterService;
 
+    // Check if current user is manager from JWT claims
     private boolean isAdmin() {
         Map<String, Object> claims = ThreadLocalUtil.get();
         if (claims == null) {
@@ -25,6 +27,7 @@ public class AdminScooterController {
         return role != null && "MANAGER".equalsIgnoreCase(role.toString());
     }
 
+    // Add new scooter
     @PostMapping("/add")
     public Result<?> add(@RequestBody Scooter scooter) {
         if (!isAdmin()) {
@@ -37,6 +40,7 @@ public class AdminScooterController {
         return Result.error("Failed to add scooter, code may already exist");
     }
 
+    // Update scooter by id
     @PostMapping("/update")
     public Result<?> update(@RequestBody Scooter scooter) {
         if (!isAdmin()) {
@@ -49,6 +53,7 @@ public class AdminScooterController {
         return Result.error("Failed to update scooter, record not found or code duplicated");
     }
 
+    // Delete scooter by id
     @DeleteMapping("/delete")
     public Result<?> delete(@RequestParam Long id) {
         if (!isAdmin()) {

@@ -20,6 +20,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+// User API: register, login, my orders
 @RestController
 @RequestMapping("/user")
 public class UserController {
@@ -30,9 +31,10 @@ public class UserController {
     @Autowired
     private BookingService bookingService;
 
+    // Register new user
     @PostMapping("/register")
     public Result<?> register(String username, String password) {
-        // Check if username already exists.
+        // Check if username already exists
         User u = userService.findByUserName(username);
         if (u == null) {
             userService.register(username, password);
@@ -42,10 +44,11 @@ public class UserController {
         }
     }
 
+    // Login, returns JWT token
     @PostMapping("/login")
     public Result<?> login(@RequestParam("username") @Validated String username,
                            @Validated @RequestParam("password") String password) {
-        // Authenticate user in service layer with MyBatis-Plus query.
+        // Authenticate user in service layer
         User u = userService.login(username, password);
         if (u != null) {
             Map<String, Object> claims = new HashMap<>();
@@ -58,6 +61,7 @@ public class UserController {
         return Result.error("Invalid username or password");
     }
 
+    // Get current user's bookings
     @GetMapping("/my-orders")
     @SuppressWarnings("unchecked")
     public Result<List<Booking>> myOrders() {

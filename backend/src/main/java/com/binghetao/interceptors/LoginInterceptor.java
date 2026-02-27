@@ -20,7 +20,6 @@ public class LoginInterceptor implements HandlerInterceptor {
             response.setStatus(401);
             return false;
         }
-        // 支持 "Bearer <token>" 或直接 "<token>"
         String token = auth.startsWith("Bearer ") ? auth.substring(7) : auth;
         try {
             Map<String, Object> claims = JwtUtil.parseToken(token);

@@ -6,11 +6,12 @@ import com.auth0.jwt.algorithms.Algorithm;
 import java.util.Date;
 import java.util.Map;
 
+// JWT create and parse
 public class JwtUtil {
 
     private static final String KEY = "tbh";
-	
-	//接收业务数据,生成token并返回
+
+    // Build token from claims, 12h expiry
     public static String genToken(Map<String, Object> claims) {
         return JWT.create()
                 .withClaim("claims", claims)
@@ -18,7 +19,7 @@ public class JwtUtil {
                 .sign(Algorithm.HMAC256(KEY));
     }
 
-	//接收token,验证token,并返回业务数据
+    // Verify token and return claims
     public static Map<String, Object> parseToken(String token) {
         return JWT.require(Algorithm.HMAC256(KEY))
                 .build()

@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.HashMap;
 import java.util.Map;
 
+// Admin API: manager login
 @RestController
 @RequestMapping("/admin")
 public class AdminController {
@@ -20,6 +21,7 @@ public class AdminController {
     @Autowired
     private UserService userService;
 
+    // Manager login, returns JWT if role is MANAGER and enabled
     @PostMapping("/login")
     public Result<?> login(@RequestParam("username") String username, @RequestParam("password") String password) {
         User u = userService.login(username, password);

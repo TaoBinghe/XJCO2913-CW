@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+// Payment API: simulate pay for booking
 @RestController
 @RequestMapping("/payment")
 public class PaymentController {
@@ -16,10 +17,7 @@ public class PaymentController {
     @Autowired
     private PaymentService paymentService;
 
-    /**
-     * Simulate payment for a booking by its ID.
-     * Requires login (JWT token in Authorization header); no password or real card details needed.
-     */
+    // Simulate payment for booking by id (JWT required)
     @PostMapping
     public Result<?> pay(@RequestParam Long bookingId) {
         try {

@@ -6,25 +6,19 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+// Booking service: pricing plans, book scooter, activate, list by user
 @Service
 public interface BookingService {
+
+    // List all pricing plans
     List<PricingPlan> listPricingPlan();
 
+    // Book scooter for given period
     boolean bookScooter(Integer scooterId, String hiredPeriod);
 
-    /**
-     * Activate a booking after the user confirms the selection on frontend.
-     *
-     * @param bookingId the booking to activate
-     * @return true if the booking is successfully activated
-     */
+    // Activate booking after user confirms
     boolean activateBooking(Long bookingId);
 
-    /**
-     * 查询指定用户的历史订单（预订记录），按创建时间倒序。
-     *
-     * @param userId 用户 ID
-     * @return 该用户的预订列表
-     */
+    // List bookings by user id, newest first
     List<Booking> listBookingsByUserId(Long userId);
 }
