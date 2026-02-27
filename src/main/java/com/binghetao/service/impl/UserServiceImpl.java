@@ -5,6 +5,7 @@ import com.binghetao.domain.User;
 import com.binghetao.mapper.UserMapper;
 import com.binghetao.service.UserService;
 import com.binghetao.utils.Md5Util;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
