@@ -1,0 +1,90 @@
+{
+	"pages": [
+		{
+			"path": "pages/index/index",
+			"style": {
+				"navigationBarTitleText": "E-Scooter Rental"
+			}
+		},
+		{
+			"path": "pages/orders/orders",
+			"style": {
+				"navigationBarTitleText": "My Orders"
+			}
+		},
+		{
+			"path": "pages/my/my",
+			"style": {
+				"navigationBarTitleText": "My Profile"
+			}
+		},
+		{
+			"path": "pages/login/login",
+			"style": {
+				"navigationBarTitleText": "Login"
+			}
+		},
+		{
+			"path": "pages/register/register",
+			"style": {
+				"navigationBarTitleText": "Register"
+			}
+		},
+		{
+			"path": "pages/booking/booking",
+			"style": {
+				"navigationBarTitleText": "Book a Scooter"
+			}
+		},
+		{
+			"path": "pages/order-detail/order-detail",
+			"style": {
+				"navigationBarTitleText": "Order Detail"
+			}
+		},
+		{
+			"path": "pages/admin-login/admin-login",
+			"style": {
+				"navigationBarTitleText": "Admin Login"
+			}
+		},
+		{
+			"path": "pages/admin/admin",
+			"style": {
+				"navigationBarTitleText": "Scooter Management"
+			}
+		}
+	],
+	"globalStyle": {
+		"navigationBarTextStyle": "white",
+		"navigationBarTitleText": "E-Scooter",
+		"navigationBarBackgroundColor": "#07c160",
+		"backgroundColor": "#f5f7f5"
+	},
+	"tabBar": {
+		"color": "#999999",
+		"selectedColor": "#07c160",
+		"backgroundColor": "#ffffff",
+		"borderStyle": "black",
+		"list": [
+			{
+				"pagePath": "pages/index/index",
+				"text": "Home",
+				"iconPath": "static/tab-home.png",
+				"selectedIconPath": "static/tab-home-active.png"
+			},
+			{
+				"pagePath": "pages/orders/orders",
+				"text": "Orders",
+				"iconPath": "static/tab-order.png",
+				"selectedIconPath": "static/tab-order-active.png"
+			},
+			{
+				"pagePath": "pages/my/my",
+				"text": "My",
+				"iconPath": "static/tab-my.png",
+				"selectedIconPath": "static/tab-my-active.png"
+			}
+		]
+	}
+}
