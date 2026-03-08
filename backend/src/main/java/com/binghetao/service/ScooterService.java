@@ -2,16 +2,17 @@ package com.binghetao.service;
 
 import com.binghetao.domain.Scooter;
 
+import java.util.List;
+
 // Scooter CRUD for admin
 public interface ScooterService {
 
-    // Add new scooter
+    List<Scooter> listAll();
+
     boolean addScooter(Scooter scooter);
 
-    // Update scooter
     boolean updateScooter(Scooter scooter);
 
-    // Delete scooter by id
     boolean deleteScooter(Long id);
 }
 

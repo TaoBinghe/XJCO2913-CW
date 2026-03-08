@@ -7,6 +7,7 @@ import com.binghetao.utils.ThreadLocalUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 // Admin scooter CRUD API
@@ -17,7 +18,6 @@ public class AdminScooterController {
     @Autowired
     private ScooterService scooterService;
 
-    // Check if current user is manager from JWT claims
     private boolean isAdmin() {
         Map<String, Object> claims = ThreadLocalUtil.get();
         if (claims == null) {
@@ -27,7 +27,15 @@ public class AdminScooterController {
         return role != null && "MANAGER".equalsIgnoreCase(role.toString());
     }
 
-    // Add new scooter
+    @GetMapping("/list")
+    public Result<List<Scooter>> list() {
+        if (!isAdmin()) {
+            return Result.error("Forbidden: admin only");
+        }
+        List<Scooter> scooters = scooterService.listAll();
+        return Result.success(scooters);
+    }
+
     @PostMapping("/add")
     public Result<?> add(@RequestBody Scooter scooter) {
         if (!isAdmin()) {

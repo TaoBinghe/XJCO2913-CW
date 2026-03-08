@@ -4,16 +4,14 @@ import com.binghetao.domain.Result;
 import com.binghetao.domain.User;
 import com.binghetao.service.UserService;
 import com.binghetao.utils.JwtUtil;
+import com.binghetao.utils.ThreadLocalUtil;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
-// Admin API: manager login
 @RestController
 @RequestMapping("/admin")
 public class AdminController {
@@ -21,7 +19,23 @@ public class AdminController {
     @Autowired
     private UserService userService;
 
-    // Manager login, returns JWT if role is MANAGER and enabled
+    private boolean isAdmin() {
+        Map<String, Object> claims = ThreadLocalUtil.get();
+        if (claims == null) return false;
+        Object role = claims.get("role");
+        return role != null && "MANAGER".equalsIgnoreCase(role.toString());
+    }
+
+    @GetMapping("/user/list")
+    public Result<List<User>> listUsers() {
+        if (!isAdmin()) {
+            return Result.error("Forbidden: admin only");
+        }
+        List<User> users = userService.listAll();
+        users.forEach(u -> u.setPassword(null));
+        return Result.success(users);
+    }
+
     @PostMapping("/login")
     public Result<?> login(@RequestParam("username") String username, @RequestParam("password") String password) {
         User u = userService.login(username, password);

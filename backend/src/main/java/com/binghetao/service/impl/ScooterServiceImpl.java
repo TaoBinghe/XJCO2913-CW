@@ -7,8 +7,15 @@ import com.binghetao.mapper.ScooterMapper;
 import com.binghetao.service.ScooterService;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 public class ScooterServiceImpl extends ServiceImpl<ScooterMapper, Scooter> implements ScooterService {
+
+    @Override
+    public List<Scooter> listAll() {
+        return baseMapper.selectList(null);
+    }
 
     @Override
     public boolean addScooter(Scooter scooter) {
