@@ -1,6 +1,6 @@
 import { getToken, removeToken } from './auth'
 
-const BASE_URL = 'http://localhost:9090'
+const BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '')
 
 function buildQueryString(params) {
   return Object.keys(params)
@@ -10,6 +10,12 @@ function buildQueryString(params) {
 
 export function request(options) {
   const { url, method = 'GET', data, contentType = 'json' } = options
+
+  if (!BASE_URL) {
+    const error = new Error('VITE_API_BASE_URL is not configured')
+    uni.showToast({ title: 'API address not configured', icon: 'none' })
+    return Promise.reject(error)
+  }
 
   const header = {}
   const token = getToken()
