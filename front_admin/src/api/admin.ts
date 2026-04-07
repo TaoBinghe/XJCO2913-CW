@@ -1,7 +1,25 @@
 import request from '@/utils/request'
+import type { ApiResponse } from '@/utils/request'
+
+export interface AdminUserDto {
+  id: number
+  username: string
+  email: string | null
+  role: string
+  status: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ScooterDto {
+  id?: number
+  scooterCode: string
+  status: string
+  location: string
+}
 
 export function adminLogin(username: string, password: string) {
-  return request({
+  return request<ApiResponse<string>>({
     url: '/admin/login',
     method: 'post',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -10,14 +28,14 @@ export function adminLogin(username: string, password: string) {
 }
 
 export function listUsers() {
-  return request({
+  return request<ApiResponse<AdminUserDto[]>>({
     url: '/admin/user/list',
     method: 'get'
   })
 }
 
 export function listScooters() {
-  return request({
+  return request<ApiResponse<ScooterDto[]>>({
     url: '/admin/scooter/list',
     method: 'get'
   })
@@ -57,14 +75,14 @@ export interface PricingPlanDto {
 }
 
 export function getPricingPlanList() {
-  return request<{ data: PricingPlanDto[] }>({
+  return request<ApiResponse<PricingPlanDto[]>>({
     url: '/admin/pricing-plans',
     method: 'get'
   })
 }
 
 export function getPricingPlanById(id: number) {
-  return request<{ data: PricingPlanDto }>({
+  return request<ApiResponse<PricingPlanDto>>({
     url: `/admin/pricing-plans/${id}`,
     method: 'get'
   })
