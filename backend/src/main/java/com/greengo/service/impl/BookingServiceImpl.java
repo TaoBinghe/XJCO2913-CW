@@ -4,14 +4,18 @@ package com.binghetao.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.binghetao.domain.Booking;
+import com.binghetao.domain.Payment;
 import com.binghetao.domain.PricingPlan;
 import com.binghetao.mapper.BookingMapper;
 import com.binghetao.mapper.PricingPlanMapper;
 import com.binghetao.service.BookingService;
+import com.binghetao.service.PaymentService;
 import com.binghetao.utils.ThreadLocalUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +25,9 @@ public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> impl
 
     @Autowired
     private PricingPlanMapper pricingPlanMapper;
+
+    @Autowired
+    private PaymentService paymentService;
 
     @Override
     public List<PricingPlan> listPricingPlan() {
@@ -109,6 +116,60 @@ public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> impl
         booking.setStatus("ACTIVE");
         baseMapper.updateById(booking);
         return true;
+    }
+
+    @Override
+    @Transactional
+    public Booking cancelBooking(Long bookingId) {
+        Map<String, Object> claims = ThreadLocalUtil.get();
+        Long userId = ((Number) claims.get("id")).longValue();
+
+        Booking booking = baseMapper.selectById(bookingId);
+        if (booking == null) {
+            throw new IllegalArgumentException("Booking not found");
+        }
+        if (!booking.getUserId().equals(userId)) {
+            throw new IllegalArgumentException("Not your booking");
+        }
+        if ("ACTIVE".equals(booking.getStatus())) {
+            throw new IllegalArgumentException("Active bookings cannot be cancelled; finish the ride and pay instead");
+        }
+        if (!"PENDING".equals(booking.getStatus())) {
+            throw new IllegalArgumentException("Only pending bookings can be cancelled");
+        }
+
+        booking.setStatus("CANCELLED");
+        baseMapper.updateById(booking);
+        return booking;
+    }
+
+    @Override
+    @Transactional
+    public Map<String, Object> finishBooking(Long bookingId) {
+        Map<String, Object> claims = ThreadLocalUtil.get();
+        Long userId = ((Number) claims.get("id")).longValue();
+
+        Booking booking = baseMapper.selectById(bookingId);
+        if (booking == null) {
+            throw new IllegalArgumentException("Booking not found");
+        }
+        if (!booking.getUserId().equals(userId)) {
+            throw new IllegalArgumentException("Not your booking");
+        }
+        if (!"ACTIVE".equals(booking.getStatus())) {
+            throw new IllegalArgumentException("Only active bookings can be finished");
+        }
+
+        booking.setEndTime(LocalDateTime.now());
+        baseMapper.updateById(booking);
+
+        Payment payment = paymentService.pay(bookingId);
+        Booking updatedBooking = baseMapper.selectById(bookingId);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("booking", updatedBooking);
+        result.put("payment", payment);
+        return result;
     }
 
     @Override

@@ -5,6 +5,7 @@ import com.binghetao.domain.PricingPlan;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 
 // Booking service: pricing plans, book scooter, activate, list by user
 @Service
@@ -18,6 +19,12 @@ public interface BookingService {
 
     // Activate booking after user confirms
     boolean activateBooking(Long bookingId);
+
+    // Cancel a pending booking owned by the current user
+    Booking cancelBooking(Long bookingId);
+
+    // Finish an active booking, pay for it, and return the updated booking and payment
+    Map<String, Object> finishBooking(Long bookingId);
 
     // List bookings by user id, newest first
     List<Booking> listBookingsByUserId(Long userId);

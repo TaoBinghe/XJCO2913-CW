@@ -1,5 +1,6 @@
 package com.binghetao.controller;
 
+import com.binghetao.domain.Booking;
 import com.binghetao.domain.PricingPlan;
 import com.binghetao.domain.Result;
 import com.binghetao.service.BookingService;
@@ -7,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 // Booking API: list plans, book, activate
 @RestController
@@ -41,6 +43,28 @@ public class BookingController {
             return Result.success();
         }
         return Result.error("Cannot activate this booking");
+    }
+
+    // Cancel a pending booking before it becomes active
+    @PostMapping("/cancel")
+    public Result<?> cancelBooking(@RequestParam Long bookingId) {
+        try {
+            Booking booking = bookingService.cancelBooking(bookingId);
+            return Result.success(booking);
+        } catch (IllegalArgumentException e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    // Finish an active booking and complete payment
+    @PostMapping("/finish")
+    public Result<?> finishBooking(@RequestParam Long bookingId) {
+        try {
+            Map<String, Object> result = bookingService.finishBooking(bookingId);
+            return Result.success(result);
+        } catch (IllegalArgumentException e) {
+            return Result.error(e.getMessage());
+        }
     }
 
 }
