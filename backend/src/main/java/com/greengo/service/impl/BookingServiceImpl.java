@@ -19,6 +19,10 @@ import java.util.Map;
 @Service
 public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> implements BookingService {
 
+    private static final String STATUS_PENDING = "PENDING";
+    private static final String STATUS_ACTIVATED = "ACTIVATED";
+    private static final String LEGACY_STATUS_ACTIVE = "ACTIVE";
+
     @Autowired
     private PricingPlanMapper pricingPlanMapper;
 
@@ -60,7 +64,7 @@ public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> impl
         // 3. Check if the scooter is already booked in the requested period
         QueryWrapper<Booking> wrapper = new QueryWrapper<>();
         wrapper.eq("scooter_id", scooterId)
-                .in("status", "PENDING", "ACTIVE")
+                .in("status", STATUS_PENDING, STATUS_ACTIVATED, LEGACY_STATUS_ACTIVE)
                 .lt("start_time", endTime)
                 .gt("end_time", startTime);
         Long clashCount = baseMapper.selectCount(wrapper);
@@ -72,7 +76,7 @@ public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> impl
         Map<String, Object> claims = ThreadLocalUtil.get();
         Long userId = ((Number) claims.get("id")).longValue();
 
-        // 5. Create booking record with PENDING status (reserved, waiting for confirmation/payment)
+        // 5. Create booking record as PENDING; user can activate it manually later
         Booking booking = new Booking();
         booking.setUserId(userId);
         booking.setScooterId(scooterId.longValue());
@@ -80,35 +84,51 @@ public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> impl
         booking.setStartTime(startTime);
         booking.setEndTime(endTime);
         booking.setTotalCost(pricingPlan.getPrice());
-        booking.setStatus("PENDING");
+        booking.setStatus(STATUS_PENDING);
 
         baseMapper.insert(booking);
         return true;
     }
 
     @Override
-    public boolean activateBooking(Long bookingId) {
-        // Get current user
+    public boolean updateBookingStatus(Long bookingId, String status) {
         Map<String, Object> claims = ThreadLocalUtil.get();
         Long userId = ((Number) claims.get("id")).longValue();
 
-        // Load booking
         Booking booking = baseMapper.selectById(bookingId);
         if (booking == null) {
             return false;
         }
-
-        // Only owner can activate and only when status is PENDING
         if (!booking.getUserId().equals(userId)) {
             return false;
         }
-        if (!"PENDING".equals(booking.getStatus())) {
+
+        String currentStatus = normalizeStatus(booking.getStatus());
+        String targetStatus = normalizeStatus(status);
+
+        if (!STATUS_PENDING.equals(currentStatus) && !STATUS_ACTIVATED.equals(currentStatus)) {
+            return false;
+        }
+        if (!STATUS_PENDING.equals(targetStatus) && !STATUS_ACTIVATED.equals(targetStatus)) {
             return false;
         }
 
-        booking.setStatus("ACTIVE");
+        if (currentStatus.equals(targetStatus)) {
+            if (!targetStatus.equals(booking.getStatus())) {
+                booking.setStatus(targetStatus);
+                baseMapper.updateById(booking);
+            }
+            return true;
+        }
+
+        booking.setStatus(targetStatus);
         baseMapper.updateById(booking);
         return true;
+    }
+
+    @Override
+    public boolean activateBooking(Long bookingId) {
+        return updateBookingStatus(bookingId, STATUS_ACTIVATED);
     }
 
     @Override
@@ -116,5 +136,12 @@ public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> impl
         QueryWrapper<Booking> wrapper = new QueryWrapper<>();
         wrapper.eq("user_id", userId).orderByDesc("created_at");
         return baseMapper.selectList(wrapper);
+    }
+
+    private String normalizeStatus(String status) {
+        if (LEGACY_STATUS_ACTIVE.equals(status)) {
+            return STATUS_ACTIVATED;
+        }
+        return status;
     }
 }

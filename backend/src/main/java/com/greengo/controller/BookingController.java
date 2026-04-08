@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-// Booking API: list plans, book, activate
+// Booking API: list plans, book, switch status, activate legacy bookings
 @RestController
 @RequestMapping("/booking")
 public class BookingController {
@@ -33,7 +33,17 @@ public class BookingController {
         return Result.error("Scooter is not available for the requested period");
     }
 
-    // Activate booking after user confirms
+    // Switch booking status between ACTIVATED and PENDING
+    @PostMapping("/status")
+    public Result<?> updateBookingStatus(@RequestParam Long bookingId, @RequestParam String status) {
+        boolean success = bookingService.updateBookingStatus(bookingId, status);
+        if (success) {
+            return Result.success();
+        }
+        return Result.error("Cannot update this booking status");
+    }
+
+    // Activate a pending booking
     @PostMapping("/activate")
     public Result<?> activateBooking(@RequestParam Long bookingId) {
         boolean success = bookingService.activateBooking(bookingId);

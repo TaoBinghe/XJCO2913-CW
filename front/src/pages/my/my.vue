@@ -1,41 +1,48 @@
 <template>
-  <view class="my-page">
-    <!-- Header -->
-    <view class="my-header">
-      <view class="avatar-circle">
-        <text class="avatar-text">{{ avatarLetter }}</text>
-      </view>
-      <text class="username">{{ username || 'Not logged in' }}</text>
-      <text v-if="!isLoggedIn" class="login-tip" @click="goLogin">Tap to login</text>
-    </view>
+  <view class="theme-page my-page">
+    <view class="theme-glow theme-glow-top"></view>
+    <view class="theme-glow theme-glow-bottom"></view>
 
-    <!-- Menu List -->
-    <view class="container">
-      <view class="menu-card card">
-        <view class="menu-item" @click="goOrders">
-          <text class="menu-icon">📋</text>
-          <text class="menu-text">My Orders</text>
-          <text class="menu-arrow">→</text>
-        </view>
-
-        <view class="menu-divider"></view>
-
-        <view class="menu-item" @click="goAdminLogin">
-          <text class="menu-icon">🔧</text>
-          <text class="menu-text">Admin Portal</text>
-          <text class="menu-arrow">→</text>
-        </view>
+    <view class="theme-shell">
+      <view class="theme-hero">
+        <text class="theme-kicker">PROFILE SPACE</text>
+        <text class="theme-headline">My Page</text>
       </view>
 
-      <!-- Logout -->
+      <view class="card profile-card">
+        <view class="profile-head">
+          <view class="avatar-circle">
+            <text class="avatar-text">{{ avatarLetter }}</text>
+          </view>
+
+          <view class="profile-copy-block">
+            <text class="profile-name">{{ profileName }}</text>
+            <text class="profile-note">{{ profileNote }}</text>
+          </view>
+        </view>
+
+        <button v-if="!isLoggedIn" class="btn-primary profile-action" @click="goLogin">
+          Login
+        </button>
+        <view v-else class="profile-status">Customer account active</view>
+      </view>
+
+      <view class="menu-list">
+        <view class="card menu-card" @click="goOrders">
+          <view class="menu-copy">
+            <text class="menu-title">My Orders</text>
+            <text class="menu-desc">Review bookings, activation steps, and payment results.</text>
+          </view>
+          <text class="menu-pill">Open</text>
+        </view>
+      </view>
+
       <view v-if="isLoggedIn" class="logout-section">
         <button class="btn-danger" @click="handleLogout">Logout</button>
       </view>
 
-      <!-- App Info -->
-      <view class="app-info">
-        <text class="app-version">E-Scooter Rental v1.0.0</text>
-        <text class="app-copyright">XJCO2913 Coursework</text>
+      <view class="card app-info-card">
+        <text class="app-version">Green Go Mini App v1.0.0</text>
       </view>
     </view>
   </view>
@@ -53,7 +60,15 @@ export default {
   },
   computed: {
     avatarLetter() {
-      return this.username ? this.username.charAt(0).toUpperCase() : '?'
+      return this.username ? this.username.charAt(0).toUpperCase() : 'G'
+    },
+    profileName() {
+      return this.username || 'Guest'
+    },
+    profileNote() {
+      return this.isLoggedIn
+        ? 'You are ready for your next ride and payment check.'
+        : 'Sign in to start bookings, payments, and order tracking.'
     }
   },
   onShow() {
@@ -70,9 +85,6 @@ export default {
         return
       }
       uni.switchTab({ url: '/pages/orders/orders' })
-    },
-    goAdminLogin() {
-      uni.navigateTo({ url: '/pages/admin-login/admin-login' })
     },
     handleLogout() {
       uni.showModal({
@@ -93,120 +105,137 @@ export default {
 </script>
 
 <style scoped>
-.my-page {
-  min-height: 100vh;
-  background-color: #f5f7f5;
+.profile-card {
+  margin-top: 38rpx;
 }
 
-.container {
-  width: 100%;
-  max-width: 960rpx;
-  margin: 0 auto;
-  box-sizing: border-box;
-  padding-bottom: calc(32rpx + constant(safe-area-inset-bottom));
-  padding-bottom: calc(32rpx + env(safe-area-inset-bottom));
-}
-
-.my-header {
-  background: linear-gradient(135deg, #07c160, #10b981);
-  padding: calc(56rpx + constant(safe-area-inset-top)) 40rpx 60rpx;
-  padding: calc(56rpx + env(safe-area-inset-top)) 40rpx 60rpx;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.avatar-circle {
-  width: 140rpx;
-  height: 140rpx;
-  background-color: rgba(255, 255, 255, 0.25);
-  border-radius: 70rpx;
+.profile-head {
   display: flex;
   align-items: center;
-  justify-content: center;
-  margin-bottom: 20rpx;
-  border: 4rpx solid rgba(255, 255, 255, 0.5);
-}
-
-.avatar-text {
-  font-size: 56rpx;
-  font-weight: 700;
-  color: #ffffff;
-}
-
-.username {
-  font-size: 36rpx;
-  font-weight: 600;
-  color: #ffffff;
-  margin-bottom: 8rpx;
-  text-align: center;
-  word-break: break-all;
-}
-
-.login-tip {
-  font-size: 26rpx;
-  color: rgba(255, 255, 255, 0.75);
-}
-
-.menu-card {
-  padding: 0;
-  overflow: hidden;
-  margin-top: -20rpx;
-}
-
-.menu-item {
-  display: flex;
-  align-items: center;
-  padding: 32rpx 30rpx;
   gap: 24rpx;
 }
 
-.menu-icon {
-  font-size: 40rpx;
-  margin-right: 24rpx;
-}
-
-.menu-text {
-  flex: 1;
-  min-width: 0;
-  font-size: 30rpx;
-  color: #333333;
-}
-
-.menu-arrow {
-  font-size: 28rpx;
-  color: #cccccc;
+.avatar-circle {
+  width: 132rpx;
+  height: 132rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #efff84 0%, #e2ff6b 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 20rpx 44rpx rgba(226, 255, 107, 0.24);
   flex-shrink: 0;
 }
 
-.menu-divider {
-  height: 1rpx;
-  background-color: #f0f0f0;
-  margin: 0 30rpx;
+.avatar-text {
+  font-size: 48rpx;
+  font-weight: 700;
+  color: #111111;
+}
+
+.profile-copy-block {
+  flex: 1;
+  min-width: 0;
+}
+
+.profile-name {
+  display: block;
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #111111;
+  word-break: break-all;
+}
+
+.profile-note {
+  display: block;
+  margin-top: 10rpx;
+  font-size: 25rpx;
+  line-height: 1.6;
+  color: #7d8677;
+}
+
+.profile-action {
+  margin-top: 28rpx;
+}
+
+.profile-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 28rpx;
+  min-height: 64rpx;
+  padding: 0 24rpx;
+  border-radius: 999rpx;
+  background: #effad7;
+  color: #5d8c22;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.menu-list {
+  margin-top: 24rpx;
+}
+
+.menu-card {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24rpx;
+}
+
+.menu-copy {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.menu-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #111111;
+}
+
+.menu-desc {
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  line-height: 1.6;
+  color: #7d8677;
+}
+
+.menu-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 112rpx;
+  height: 60rpx;
+  padding: 0 22rpx;
+  border-radius: 999rpx;
+  background: #effad7;
+  color: #5d8c22;
+  font-size: 24rpx;
+  font-weight: 700;
 }
 
 .logout-section {
-  margin-top: 48rpx;
+  margin-top: 28rpx;
 }
 
-.app-info {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-top: 60rpx;
-  padding-bottom: 40rpx;
+.app-info-card {
+  margin-top: 28rpx;
+  text-align: center;
 }
 
 .app-version {
+  display: block;
   font-size: 24rpx;
-  color: #cccccc;
-  margin-bottom: 8rpx;
-  text-align: center;
+  color: #7d8677;
 }
 
-.app-copyright {
+.app-copy {
+  display: block;
+  margin-top: 8rpx;
   font-size: 22rpx;
-  color: #dddddd;
-  text-align: center;
+  color: #a0a89a;
 }
 </style>

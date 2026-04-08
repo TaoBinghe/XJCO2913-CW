@@ -37,7 +37,7 @@ public class Booking {
 
     private BigDecimal totalCost;
 
-    // Status: PENDING / ACTIVE / COMPLETED / CANCELLED 
+    // Status: PENDING / ACTIVATED / COMPLETED / CANCELLED
     private String status;
 
     private LocalDateTime createdAt;

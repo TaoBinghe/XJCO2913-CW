@@ -1,61 +1,63 @@
 <template>
-  <view class="orders-page">
-    <view class="orders-header">
-      <text class="page-title">My Orders</text>
-    </view>
+  <view class="theme-page orders-page">
+    <view class="theme-glow theme-glow-top"></view>
+    <view class="theme-glow theme-glow-bottom"></view>
 
-    <view class="container">
-      <view v-if="loading" class="loading-state">
+    <view class="theme-shell">
+      <view class="theme-hero">
+        <text class="theme-kicker">BOOKING HISTORY</text>
+        <text class="theme-headline">Orders</text>
+        <text class="theme-copy">{{ ordersSummary }}</text>
+      </view>
+
+      <view v-if="loading" class="card loading-card">
         <text>Loading orders...</text>
       </view>
 
-      <view v-else-if="orders.length === 0" class="empty-state">
-        <text class="empty-icon">📋</text>
-        <text>No orders yet</text>
-        <button class="btn-outline empty-btn" @click="goHome">
-          Book a Scooter
-        </button>
+      <view v-else-if="orders.length === 0" class="card empty-state">
+        <text class="empty-title">No orders yet</text>
+        <text class="empty-copy">Your bookings will show up here once you start your first ride.</text>
+        <button class="btn-outline empty-btn" @click="goHome">Book a Scooter</button>
       </view>
 
       <view v-else class="order-list">
         <view
-          class="order-card card"
+          class="card order-card"
           v-for="order in orders"
           :key="order.id"
           @click="goDetail(order)"
         >
           <view class="order-card-header">
-            <text class="order-id">Order #{{ order.id }}</text>
-            <text
-              class="status-badge"
-              :class="'status-' + order.status.toLowerCase()"
-            >
-              {{ order.status }}
+            <view class="order-header-copy">
+              <text class="order-id">Order #{{ order.id }}</text>
+              <text class="order-created">Created {{ formatTime(order.createdAt) }}</text>
+            </view>
+            <text class="status-badge" :class="'status-' + normalizeStatus(order.status).toLowerCase()">
+              {{ normalizeStatus(order.status) }}
             </text>
           </view>
 
-          <view class="order-card-body">
-            <view class="order-info-row">
-              <text class="order-info-label">Scooter</text>
-              <text class="order-info-value">#{{ order.scooterId }}</text>
+          <view class="order-details">
+            <view class="order-row">
+              <text class="order-label">Scooter</text>
+              <text class="order-value">#{{ order.scooterId }}</text>
             </view>
-            <view class="order-info-row">
-              <text class="order-info-label">Cost</text>
-              <text class="order-info-value price">£{{ order.totalCost.toFixed(2) }}</text>
+            <view class="order-row">
+              <text class="order-label">Cost</text>
+              <text class="order-value order-value-strong">£{{ order.totalCost.toFixed(2) }}</text>
             </view>
-            <view class="order-info-row">
-              <text class="order-info-label">Start</text>
-              <text class="order-info-value">{{ formatTime(order.startTime) }}</text>
+            <view class="order-row">
+              <text class="order-label">Start</text>
+              <text class="order-value">{{ formatTime(order.startTime) }}</text>
             </view>
-            <view class="order-info-row">
-              <text class="order-info-label">End</text>
-              <text class="order-info-value">{{ formatTime(order.endTime) }}</text>
+            <view class="order-row">
+              <text class="order-label">End</text>
+              <text class="order-value">{{ formatTime(order.endTime) }}</text>
             </view>
           </view>
 
-          <view class="order-card-footer">
-            <text class="order-created">Created: {{ formatTime(order.createdAt) }}</text>
-            <text class="order-arrow">→</text>
+          <view class="order-footer">
+            <text class="order-link">View details</text>
           </view>
         </view>
       </view>
@@ -72,6 +74,17 @@ export default {
     return {
       orders: [],
       loading: true
+    }
+  },
+  computed: {
+    ordersSummary() {
+      if (this.loading) {
+        return 'Loading your latest bookings and payment states.'
+      }
+      if (!this.orders.length) {
+        return 'Keep track of bookings, lock and activate states, and completed rides in one clean view.'
+      }
+      return `${this.orders.length} booking(s) ready to review, switch status, or pay.`
     }
   },
   onShow() {
@@ -97,6 +110,9 @@ export default {
       if (!timeStr) return '-'
       return timeStr.replace('T', ' ').substring(0, 16)
     },
+    normalizeStatus(status) {
+      return status === 'ACTIVE' ? 'ACTIVATED' : status
+    },
     goDetail(order) {
       uni.navigateTo({
         url: `/pages/order-detail/order-detail?order=${encodeURIComponent(JSON.stringify(order))}`
@@ -110,127 +126,108 @@ export default {
 </script>
 
 <style scoped>
-.orders-page {
-  min-height: 100vh;
-  background-color: #f5f7f5;
-}
-
-.container {
-  width: 100%;
-  max-width: 960rpx;
-  margin: 0 auto;
-  box-sizing: border-box;
-  padding-bottom: calc(32rpx + constant(safe-area-inset-bottom));
-  padding-bottom: calc(32rpx + env(safe-area-inset-bottom));
-}
-
-.orders-header {
-  background: linear-gradient(135deg, #07c160, #10b981);
-  padding: 40rpx;
-  padding-bottom: 50rpx;
-}
-
-.orders-header .page-title {
-  color: #ffffff;
-}
-
-.loading-state {
-  padding: 80rpx;
+.loading-card {
   text-align: center;
-  color: #999999;
+  color: #7d8677;
 }
 
-.empty-icon {
-  font-size: 80rpx;
-  margin-bottom: 20rpx;
+.empty-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #111111;
+}
+
+.empty-copy {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 25rpx;
+  line-height: 1.6;
+  color: #7d8677;
 }
 
 .empty-btn {
-  margin-top: 30rpx;
   width: 100%;
   max-width: 360rpx;
+  margin-top: 28rpx;
 }
 
 .order-list {
-  margin-top: -20rpx;
+  margin-top: 34rpx;
 }
 
 .order-card {
-  padding: 0;
-  overflow: hidden;
+  padding: 30rpx;
 }
 
 .order-card-header {
   display: flex;
-  justify-content: space-between;
   align-items: flex-start;
-  flex-wrap: wrap;
-  padding: 24rpx 30rpx;
-  border-bottom: 1rpx solid #f0f0f0;
+  justify-content: space-between;
   gap: 20rpx;
+  padding-bottom: 22rpx;
+  border-bottom: 1rpx solid #edf0e8;
+}
+
+.order-header-copy {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
 }
 
 .order-id {
   font-size: 30rpx;
-  font-weight: 600;
-  color: #333333;
-  flex: 1;
-  min-width: 0;
+  font-weight: 700;
+  color: #111111;
   word-break: break-all;
-}
-
-.order-card-body {
-  padding: 20rpx 30rpx;
-}
-
-.order-info-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  padding: 10rpx 0;
-  gap: 20rpx;
-}
-
-.order-info-label {
-  font-size: 26rpx;
-  color: #999999;
-  flex-shrink: 0;
-}
-
-.order-info-value {
-  font-size: 26rpx;
-  color: #333333;
-  flex: 1;
-  min-width: 0;
-  text-align: right;
-  word-break: break-all;
-}
-
-.order-info-value.price {
-  color: #07c160;
-  font-weight: 600;
-}
-
-.order-card-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  padding: 20rpx 30rpx;
-  background-color: #fafafa;
-  gap: 20rpx;
 }
 
 .order-created {
-  font-size: 24rpx;
-  color: #bbbbbb;
+  margin-top: 8rpx;
+  font-size: 23rpx;
+  color: #98a093;
+}
+
+.order-details {
+  padding: 18rpx 0 0;
+}
+
+.order-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20rpx;
+  padding: 12rpx 0;
+}
+
+.order-label {
+  font-size: 25rpx;
+  color: #8c9587;
+}
+
+.order-value {
   flex: 1;
   min-width: 0;
+  font-size: 26rpx;
+  text-align: right;
+  color: #111111;
   word-break: break-all;
 }
 
-.order-arrow {
-  font-size: 30rpx;
-  color: #cccccc;
-  flex-shrink: 0;
+.order-value-strong {
+  font-weight: 700;
+  color: #5d8c22;
+}
+
+.order-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 14rpx;
+}
+
+.order-link {
+  font-size: 24rpx;
+  font-weight: 700;
+  color: #5d8c22;
 }
 </style>

@@ -21,13 +21,19 @@
 		{
 			"path": "pages/login/login",
 			"style": {
-				"navigationBarTitleText": "Login"
+				"navigationBarTitleText": "Login",
+				"navigationBarTextStyle": "black",
+				"navigationBarBackgroundColor": "#ffffff",
+				"backgroundColor": "#ffffff"
 			}
 		},
 		{
 			"path": "pages/register/register",
 			"style": {
-				"navigationBarTitleText": "Register"
+				"navigationBarTitleText": "Register",
+				"navigationBarTextStyle": "black",
+				"navigationBarBackgroundColor": "#ffffff",
+				"backgroundColor": "#ffffff"
 			}
 		},
 		{
@@ -41,31 +47,19 @@
 			"style": {
 				"navigationBarTitleText": "Order Detail"
 			}
-		},
-		{
-			"path": "pages/admin-login/admin-login",
-			"style": {
-				"navigationBarTitleText": "Admin Login"
-			}
-		},
-		{
-			"path": "pages/admin/admin",
-			"style": {
-				"navigationBarTitleText": "Scooter Management"
-			}
 		}
 	],
 	"globalStyle": {
-		"navigationBarTextStyle": "white",
-		"navigationBarTitleText": "E-Scooter",
-		"navigationBarBackgroundColor": "#07c160",
-		"backgroundColor": "#f5f7f5"
+		"navigationBarTextStyle": "black",
+		"navigationBarTitleText": "Green Go",
+		"navigationBarBackgroundColor": "#ffffff",
+		"backgroundColor": "#ffffff"
 	},
 	"tabBar": {
 		"color": "#999999",
-		"selectedColor": "#07c160",
+		"selectedColor": "#6d8b24",
 		"backgroundColor": "#ffffff",
-		"borderStyle": "black",
+		"borderStyle": "white",
 		"list": [
 			{
 				"pagePath": "pages/index/index",

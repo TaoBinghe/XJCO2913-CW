@@ -1,99 +1,96 @@
 <template>
-  <view class="detail-page container">
-    <view v-if="!order" class="empty-state">
-      <text>Order not found</text>
-    </view>
+  <view class="theme-page detail-page">
+    <view class="theme-glow theme-glow-top"></view>
+    <view class="theme-glow theme-glow-bottom"></view>
 
-    <view v-else>
-      <!-- Status Header -->
-      <view class="status-header" :class="'bg-' + order.status.toLowerCase()">
-        <text class="status-icon">{{ statusIcon }}</text>
-        <text class="status-text">{{ order.status }}</text>
-        <text class="status-desc">{{ statusDesc }}</text>
+    <view class="theme-shell">
+      <view v-if="!order" class="card empty-state">
+        <text class="empty-title">Order not found</text>
+        <text class="empty-copy">We could not load the booking details for this page.</text>
       </view>
 
-      <!-- Order Info -->
-      <view class="card">
-        <text class="section-title">Order Information</text>
-        <view class="info-row">
-          <text class="info-label">Order ID</text>
-          <text class="info-value">#{{ order.id }}</text>
+      <view v-else>
+        <view class="card status-card">
+          <view class="status-marker" :class="'status-marker-' + statusTone">
+            {{ statusShort }}
+          </view>
+          <text class="status-title">{{ displayStatus }}</text>
+          <text class="status-copy">{{ statusDesc }}</text>
         </view>
-        <view class="info-row">
-          <text class="info-label">Scooter ID</text>
-          <text class="info-value">#{{ order.scooterId }}</text>
-        </view>
-        <view class="info-row">
-          <text class="info-label">Pricing Plan</text>
-          <text class="info-value">Plan #{{ order.pricingPlanId }}</text>
-        </view>
-        <view class="info-row">
-          <text class="info-label">Start Time</text>
-          <text class="info-value">{{ formatTime(order.startTime) }}</text>
-        </view>
-        <view class="info-row">
-          <text class="info-label">End Time</text>
-          <text class="info-value">{{ formatTime(order.endTime) }}</text>
-        </view>
-        <view class="info-row">
-          <text class="info-label">Total Cost</text>
-          <text class="info-value cost">£{{ order.totalCost.toFixed(2) }}</text>
-        </view>
-        <view class="info-row">
-          <text class="info-label">Created</text>
-          <text class="info-value">{{ formatTime(order.createdAt) }}</text>
-        </view>
-      </view>
 
-      <!-- Payment Result -->
-      <view v-if="paymentResult" class="card">
-        <text class="section-title">Payment Details</text>
-        <view class="info-row">
-          <text class="info-label">Status</text>
-          <text class="info-value" :class="paymentResult.status === 'SUCCESS' ? 'success-text' : 'danger-text'">
-            {{ paymentResult.status }}
-          </text>
+        <view class="card">
+          <text class="section-title">Order Information</text>
+          <view class="info-row">
+            <text class="info-label">Order ID</text>
+            <text class="info-value">#{{ order.id }}</text>
+          </view>
+          <view class="info-row">
+            <text class="info-label">Scooter ID</text>
+            <text class="info-value">#{{ order.scooterId }}</text>
+          </view>
+          <view class="info-row">
+            <text class="info-label">Pricing Plan</text>
+            <text class="info-value">Plan #{{ order.pricingPlanId }}</text>
+          </view>
+          <view class="info-row">
+            <text class="info-label">Start Time</text>
+            <text class="info-value">{{ formatTime(order.startTime) }}</text>
+          </view>
+          <view class="info-row">
+            <text class="info-label">End Time</text>
+            <text class="info-value">{{ formatTime(order.endTime) }}</text>
+          </view>
+          <view class="info-row">
+            <text class="info-label">Total Cost</text>
+            <text class="info-value info-value-strong">{{ formatCurrency(order.totalCost) }}</text>
+          </view>
+          <view class="info-row">
+            <text class="info-label">Created</text>
+            <text class="info-value">{{ formatTime(order.createdAt) }}</text>
+          </view>
         </view>
-        <view class="info-row">
-          <text class="info-label">Amount</text>
-          <text class="info-value">£{{ paymentResult.amount.toFixed(2) }}</text>
-        </view>
-        <view class="info-row">
-          <text class="info-label">Transaction ID</text>
-          <text class="info-value">{{ paymentResult.transactionId }}</text>
-        </view>
-        <view class="info-row">
-          <text class="info-label">Card</text>
-          <text class="info-value">****{{ paymentResult.cardLastFour }}</text>
-        </view>
-        <view class="info-row">
-          <text class="info-label">Payment Time</text>
-          <text class="info-value">{{ formatTime(paymentResult.paymentTime) }}</text>
-        </view>
-      </view>
 
-      <!-- Action Buttons -->
-      <view v-if="order.status === 'PENDING'" class="action-buttons">
-        <button class="btn-primary" :loading="activating" @click="handleActivate">
-          Activate Booking
-        </button>
-        <view style="height: 24rpx;"></view>
-        <button class="btn-outline" :loading="paying" @click="handlePay">
-          Pay Now
-        </button>
-      </view>
+        <view v-if="paymentResult" class="card">
+          <text class="section-title">Payment Details</text>
+          <view class="info-row">
+            <text class="info-label">Status</text>
+            <text class="info-value" :class="paymentResult.status === 'SUCCESS' ? 'text-positive' : 'text-danger'">
+              {{ paymentResult.status }}
+            </text>
+          </view>
+          <view class="info-row">
+            <text class="info-label">Amount</text>
+            <text class="info-value">{{ formatCurrency(paymentResult.amount) }}</text>
+          </view>
+          <view class="info-row">
+            <text class="info-label">Transaction ID</text>
+            <text class="info-value">{{ paymentResult.transactionId }}</text>
+          </view>
+          <view class="info-row">
+            <text class="info-label">Card</text>
+            <text class="info-value">****{{ paymentResult.cardLastFour }}</text>
+          </view>
+          <view class="info-row">
+            <text class="info-label">Payment Time</text>
+            <text class="info-value">{{ formatTime(paymentResult.paymentTime) }}</text>
+          </view>
+        </view>
 
-      <view v-else-if="order.status === 'ACTIVE' && !paymentResult" class="action-buttons">
-        <button class="btn-primary" :loading="paying" @click="handlePay">
-          Pay Now
-        </button>
+        <view v-if="isSwitchable && !paymentResult" class="action-buttons">
+          <button class="btn-outline action-button" :loading="switching" @click="handleToggleStatus">
+            {{ toggleButtonText }}
+          </button>
+          <button class="btn-primary action-button" :loading="paying" @click="handlePay">
+            Pay Now
+          </button>
+        </view>
       </view>
     </view>
   </view>
 </template>
 
 <script>
-import { activateBooking } from '@/api/booking'
+import { updateBookingStatus } from '@/api/booking'
 import { pay } from '@/api/payment'
 
 export default {
@@ -101,30 +98,69 @@ export default {
     return {
       order: null,
       paymentResult: null,
-      activating: false,
+      switching: false,
       paying: false
     }
   },
   computed: {
-    statusIcon() {
+    normalizedStatus() {
       if (!this.order) return ''
-      const map = {
-        'PENDING': '⏳',
-        'ACTIVE': '🛴',
-        'COMPLETED': '✅',
-        'CANCELLED': '❌'
+      return this.order.status === 'ACTIVE' ? 'ACTIVATED' : this.order.status
+    },
+    displayStatus() {
+      return this.normalizedStatus
+    },
+    isSwitchable() {
+      return this.normalizedStatus === 'PENDING' || this.normalizedStatus === 'ACTIVATED'
+    },
+    toggleTargetStatus() {
+      if (this.normalizedStatus === 'ACTIVATED') {
+        return 'PENDING'
       }
-      return map[this.order.status] || '📋'
+      if (this.normalizedStatus === 'PENDING') {
+        return 'ACTIVATED'
+      }
+      return ''
+    },
+    toggleButtonText() {
+      if (this.normalizedStatus === 'ACTIVATED') {
+        return 'Lock Scooter'
+      }
+      if (this.normalizedStatus === 'PENDING') {
+        return 'Activate Scooter'
+      }
+      return ''
+    },
+    statusTone() {
+      if (!this.normalizedStatus) return 'pending'
+      const map = {
+        PENDING: 'pending',
+        ACTIVATED: 'activated',
+        ACTIVE: 'activated',
+        COMPLETED: 'completed',
+        CANCELLED: 'cancelled'
+      }
+      return map[this.normalizedStatus] || 'pending'
+    },
+    statusShort() {
+      const map = {
+        pending: 'P',
+        activated: 'A',
+        completed: 'C',
+        cancelled: 'X'
+      }
+      return map[this.statusTone] || 'P'
     },
     statusDesc() {
-      if (!this.order) return ''
+      if (!this.normalizedStatus) return ''
       const map = {
-        'PENDING': 'Waiting for activation',
-        'ACTIVE': 'Ride in progress',
-        'COMPLETED': 'Ride completed',
-        'CANCELLED': 'Order cancelled'
+        PENDING: 'The scooter is pending and locked. Activate it when you are ready to ride, or pay to end the order.',
+        ACTIVATED: 'The scooter is activated. You can lock it at any time or pay to finish the order.',
+        ACTIVE: 'The scooter is activated. You can lock it at any time or pay to finish the order.',
+        COMPLETED: 'This booking has been paid and completed.',
+        CANCELLED: 'This booking is no longer active.'
       }
-      return map[this.order.status] || ''
+      return map[this.normalizedStatus] || ''
     }
   },
   onLoad(options) {
@@ -141,16 +177,25 @@ export default {
       if (!timeStr) return '-'
       return timeStr.replace('T', ' ').substring(0, 16)
     },
-    async handleActivate() {
-      this.activating = true
+    formatCurrency(value) {
+      const amount = Number(value || 0)
+      return `\u00A3${amount.toFixed(2)}`
+    },
+    async handleToggleStatus() {
+      if (!this.toggleTargetStatus) return
+
+      this.switching = true
       try {
-        await activateBooking(this.order.id)
-        uni.showToast({ title: 'Booking activated!', icon: 'success' })
-        this.order.status = 'ACTIVE'
+        await updateBookingStatus(this.order.id, this.toggleTargetStatus)
+        this.order.status = this.toggleTargetStatus
+        uni.showToast({
+          title: this.toggleTargetStatus === 'ACTIVATED' ? 'Scooter activated' : 'Scooter locked',
+          icon: 'success'
+        })
       } catch (e) {
         // error toast handled by request.js
       } finally {
-        this.activating = false
+        this.switching = false
       }
     },
     async handlePay() {
@@ -171,65 +216,82 @@ export default {
 </script>
 
 <style scoped>
-.detail-page {
-  min-height: 100vh;
-  padding-top: 0;
-  padding-bottom: calc(60rpx + constant(safe-area-inset-bottom));
-  padding-bottom: calc(60rpx + env(safe-area-inset-bottom));
-  width: 100%;
-  max-width: 960rpx;
-  margin: 0 auto;
-  box-sizing: border-box;
-}
-
-.status-header {
+.status-card {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 60rpx 40rpx;
-  margin: 0 -30rpx 30rpx -30rpx;
+  text-align: center;
+  margin-top: 18rpx;
 }
 
-.bg-pending {
-  background: linear-gradient(135deg, #ff9800, #ffc107);
-}
-
-.bg-active {
-  background: linear-gradient(135deg, #07c160, #10b981);
-}
-
-.bg-completed {
-  background: linear-gradient(135deg, #2196f3, #42a5f5);
-}
-
-.bg-cancelled {
-  background: linear-gradient(135deg, #f44336, #e57373);
-}
-
-.status-icon {
-  font-size: 72rpx;
-  margin-bottom: 16rpx;
-}
-
-.status-text {
+.status-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 112rpx;
+  height: 112rpx;
+  border-radius: 50%;
   font-size: 40rpx;
   font-weight: 700;
-  color: #ffffff;
-  margin-bottom: 8rpx;
 }
 
-.status-desc {
-  font-size: 26rpx;
-  color: rgba(255, 255, 255, 0.85);
+.status-marker-pending {
+  background: #fff5db;
+  color: #b98224;
+}
+
+.status-marker-activated {
+  background: #effad7;
+  color: #5d8c22;
+}
+
+.status-marker-completed {
+  background: #edf6ea;
+  color: #4a7c52;
+}
+
+.status-marker-cancelled {
+  background: #fff0ed;
+  color: #c85c55;
+}
+
+.status-title {
+  display: block;
+  margin-top: 18rpx;
+  font-size: 38rpx;
+  font-weight: 700;
+  color: #111111;
+}
+
+.status-copy {
+  display: block;
+  margin-top: 10rpx;
+  font-size: 25rpx;
+  line-height: 1.6;
+  color: #7d8677;
+}
+
+.empty-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #111111;
+}
+
+.empty-copy {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 25rpx;
+  line-height: 1.6;
+  color: #7d8677;
 }
 
 .info-row {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  padding: 18rpx 0;
-  border-bottom: 1rpx solid #f5f5f5;
   gap: 20rpx;
+  padding: 14rpx 0;
+  border-bottom: 1rpx solid #edf0e8;
 }
 
 .info-row:last-child {
@@ -237,37 +299,40 @@ export default {
 }
 
 .info-label {
-  font-size: 28rpx;
-  color: #999999;
-  flex-shrink: 0;
+  font-size: 25rpx;
+  color: #8c9587;
 }
 
 .info-value {
-  font-size: 28rpx;
-  color: #333333;
-  font-weight: 500;
   flex: 1;
   min-width: 0;
+  font-size: 27rpx;
   text-align: right;
+  color: #111111;
   word-break: break-all;
 }
 
-.info-value.cost {
-  font-size: 34rpx;
-  color: #07c160;
+.info-value-strong {
   font-weight: 700;
+  color: #5d8c22;
 }
 
-.success-text {
-  color: #4caf50 !important;
+.text-positive {
+  color: #4a7c52;
 }
 
-.danger-text {
-  color: #f44336 !important;
+.text-danger {
+  color: #c85c55;
 }
 
 .action-buttons {
-  margin-top: 40rpx;
-  margin-bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18rpx;
+  margin-top: 20rpx;
+}
+
+.action-button {
+  width: 100%;
 }
 </style>

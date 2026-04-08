@@ -29,7 +29,7 @@ public class PaymentServiceImpl implements PaymentService {
         Map<String, Object> claims = ThreadLocalUtil.get();
         Long userId =((Number) claims.get("id")).longValue();
 
-        // 2. Validate booking: must exist, belong to current user, and be in PENDING or ACTIVE status
+        // 2. Validate booking: must exist, belong to current user, and be in PENDING or ACTIVATED status
         Booking booking = bookingMapper.selectById(bookingId);
         if (booking == null) {
             throw new IllegalArgumentException("Booking not found");
@@ -37,8 +37,9 @@ public class PaymentServiceImpl implements PaymentService {
         if (!booking.getUserId().equals(userId)) {
             throw new IllegalArgumentException("Not your booking");
         }
-        if (!"PENDING".equals(booking.getStatus()) && !"ACTIVE".equals(booking.getStatus())) {
-            throw new IllegalArgumentException("Booking status must be PENDING or ACTIVE");
+        String bookingStatus = booking.getStatus();
+        if (!"PENDING".equals(bookingStatus) && !"ACTIVATED".equals(bookingStatus) && !"ACTIVE".equals(bookingStatus)) {
+            throw new IllegalArgumentException("Booking status must be PENDING or ACTIVATED");
         }
 
         // 3. Ensure this booking has not already been paid (one payment per booking)

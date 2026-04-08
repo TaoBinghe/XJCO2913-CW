@@ -6,7 +6,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
-// Booking service: pricing plans, book scooter, activate, list by user
+// Booking service: pricing plans, book scooter, switch booking status, list by user
 @Service
 public interface BookingService {
 
@@ -16,7 +16,10 @@ public interface BookingService {
     // Book scooter for given period
     boolean bookScooter(Integer scooterId, String hiredPeriod);
 
-    // Activate booking after user confirms
+    // Switch booking status between PENDING and ACTIVATED
+    boolean updateBookingStatus(Long bookingId, String status);
+
+    // Activate a pending booking
     boolean activateBooking(Long bookingId);
 
     // List bookings by user id, newest first

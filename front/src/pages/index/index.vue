@@ -1,50 +1,52 @@
 <template>
-  <view class="home-page">
-    <!-- Banner -->
-    <view class="banner">
-      <view class="banner-content">
-        <text class="banner-title">Green Travel</text>
-        <text class="banner-desc">Rent an e-scooter, explore the campus</text>
-      </view>
-      <text class="banner-icon">🛴</text>
-    </view>
+  <view class="theme-page home-page">
+    <view class="theme-glow theme-glow-top"></view>
+    <view class="theme-glow theme-glow-bottom"></view>
 
-    <!-- Quick Booking Entry -->
-    <view class="container">
-      <view class="quick-entry card" @click="goBooking">
-        <view class="quick-entry-left">
-          <text class="quick-entry-title">Start a Ride</text>
-          <text class="quick-entry-desc">Choose a scooter and pricing plan</text>
+    <view class="theme-shell">
+      <view class="theme-hero">
+        <text class="theme-kicker">CITY RIDES</text>
+        <text class="theme-headline">Ride Light Through the City</text>
+      </view>
+
+      <view class="card home-cta-card" @click="goBooking">
+        <view class="home-cta-copy">
+          <text class="home-cta-title">Start a Ride</text>
+          <text class="home-cta-desc">Book a scooter in a few taps and get moving right away.</text>
         </view>
-        <text class="quick-entry-arrow">→</text>
+        <text class="home-cta-pill">Explore</text>
       </view>
 
-      <!-- Pricing Plans -->
-      <text class="section-title">Pricing Plans</text>
+      <view class="theme-section-head">
+        <view>
+          <text class="section-title">Pricing Plans</text>
+        </view>
+      </view>
 
-      <view v-if="loading" class="loading-state">
+      <view v-if="loading" class="card loading-card">
         <text>Loading plans...</text>
       </view>
 
       <view v-else class="plan-grid">
         <view
-          class="plan-card card"
+          class="card plan-card"
           v-for="plan in plans"
           :key="plan.id"
           @click="goBookingWithPlan(plan)"
         >
-          <text class="plan-period">{{ formatPeriod(plan.hirePeriod) }}</text>
-          <view class="plan-price-row">
-            <text class="plan-currency">£</text>
-            <text class="plan-price">{{ plan.price.toFixed(2) }}</text>
-          </view>
+          <view class="plan-badge">{{ formatPeriod(plan.hirePeriod) }}</view>
+          <text class="plan-price">£{{ plan.price.toFixed(2) }}</text>
           <text class="plan-label">{{ formatPeriodLabel(plan.hirePeriod) }}</text>
         </view>
       </view>
 
-      <!-- Login Hint (when not logged in) -->
-      <view v-if="!isLoggedIn" class="login-hint card" @click="goLogin">
-        <text class="login-hint-text">Login to book a scooter →</text>
+      <view v-if="!isLoggedIn" class="card login-card" @click="goLogin">
+        <text class="login-card-title">Log in to make a booking</text>
+        <text class="login-card-desc">Save your ride details, activation, and payment in one place.</text>
+      </view>
+
+      <view class="home-illustration-block">
+        <image class="home-illustration" :src="illustrationSrc" mode="widthFix" />
       </view>
     </view>
   </view>
@@ -52,6 +54,7 @@
 
 <script>
 import { getPricingPlans } from '@/api/booking'
+import loginBackground from '@/static/login_background.png'
 import { getToken } from '@/utils/auth'
 
 export default {
@@ -59,7 +62,8 @@ export default {
     return {
       plans: [],
       loading: true,
-      isLoggedIn: false
+      isLoggedIn: false,
+      illustrationSrc: loginBackground
     }
   },
   onShow() {
@@ -80,19 +84,19 @@ export default {
     },
     formatPeriod(period) {
       const map = {
-        'HOUR_1': '1h',
-        'HOUR_4': '4h',
-        'DAY_1': '1d',
-        'WEEK_1': '7d'
+        HOUR_1: '1H',
+        HOUR_4: '4H',
+        DAY_1: '1D',
+        WEEK_1: '7D'
       }
       return map[period] || period
     },
     formatPeriodLabel(period) {
       const map = {
-        'HOUR_1': '1 Hour',
-        'HOUR_4': '4 Hours',
-        'DAY_1': '1 Day',
-        'WEEK_1': '1 Week'
+        HOUR_1: '1 Hour',
+        HOUR_4: '4 Hours',
+        DAY_1: '1 Day',
+        WEEK_1: '1 Week'
       }
       return map[period] || period
     },
@@ -120,163 +124,132 @@ export default {
 </script>
 
 <style scoped>
-.home-page {
-  min-height: 100vh;
-  background-color: #f5f7f5;
-  box-sizing: border-box;
-}
-
-.container {
-  width: 100%;
-  max-width: 960rpx;
-  margin: 0 auto;
-  box-sizing: border-box;
-  padding-bottom: calc(32rpx + constant(safe-area-inset-bottom));
-  padding-bottom: calc(32rpx + env(safe-area-inset-bottom));
-}
-
-.banner {
-  background: linear-gradient(135deg, #07c160, #10b981);
-  padding: 48rpx 40rpx;
+.home-cta-card {
   display: flex;
+  align-items: flex-end;
   justify-content: space-between;
-  align-items: flex-start;
   gap: 24rpx;
+  margin-top: 38rpx;
+  border-width: 3rpx;
+  border-color: #d5dfc8;
 }
 
-.banner-content {
+.home-cta-copy {
   display: flex;
   flex-direction: column;
   flex: 1;
   min-width: 0;
 }
 
-.banner-title {
-  font-size: 44rpx;
-  font-weight: 700;
-  color: #ffffff;
-  margin-bottom: 8rpx;
-}
-
-.banner-desc {
-  font-size: 26rpx;
-  color: rgba(255, 255, 255, 0.85);
-  line-height: 1.5;
-}
-
-.banner-icon {
-  font-size: 80rpx;
-  flex-shrink: 0;
-}
-
-.quick-entry {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  padding: 36rpx 30rpx;
-  margin-top: -20rpx;
-  gap: 24rpx;
-}
-
-.quick-entry-left {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-width: 0;
-}
-
-.quick-entry-title {
+.home-cta-title {
   font-size: 34rpx;
-  font-weight: 600;
-  color: #07c160;
-  margin-bottom: 6rpx;
+  font-weight: 700;
+  color: #111111;
 }
 
-.quick-entry-desc {
+.home-cta-desc {
+  margin-top: 10rpx;
+  font-size: 26rpx;
+  line-height: 1.6;
+  color: #6f776a;
+}
+
+.home-cta-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 128rpx;
+  height: 64rpx;
+  padding: 0 26rpx;
+  border-radius: 999rpx;
+  background: #effad7;
+  color: #5d8c22;
   font-size: 24rpx;
-  color: #999999;
+  font-weight: 700;
 }
 
-.quick-entry-arrow {
-  font-size: 40rpx;
-  color: #07c160;
-}
-
-.loading-state {
-  padding: 60rpx;
+.loading-card {
   text-align: center;
-  color: #999999;
+  color: #7d8677;
 }
 
 .plan-grid {
   display: flex;
   flex-wrap: wrap;
   gap: 20rpx;
-  align-items: stretch;
 }
 
 .plan-card {
   flex: 1 1 280rpx;
-  width: auto;
-  max-width: 100%;
   min-width: 0;
-  box-sizing: border-box;
+  margin-bottom: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 36rpx 20rpx;
+  align-items: flex-start;
+  gap: 14rpx;
 }
 
-.plan-period {
-  font-size: 36rpx;
-  font-weight: 700;
-  color: #07c160;
-  background-color: #e8f5e9;
-  width: 80rpx;
-  height: 80rpx;
-  border-radius: 40rpx;
-  display: flex;
+.plan-badge {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 16rpx;
-}
-
-.plan-price-row {
-  display: flex;
-  align-items: flex-start;
-  margin-bottom: 8rpx;
-}
-
-.plan-currency {
-  font-size: 26rpx;
-  color: #333333;
-  margin-top: 6rpx;
-  margin-right: 4rpx;
-  font-weight: 600;
+  min-width: 92rpx;
+  height: 76rpx;
+  padding: 0 22rpx;
+  border-radius: 999rpx;
+  background: #effad7;
+  color: #5d8c22;
+  font-size: 28rpx;
+  font-weight: 700;
 }
 
 .plan-price {
-  font-size: 44rpx;
+  font-size: 42rpx;
+  line-height: 1.1;
   font-weight: 700;
-  color: #333333;
+  color: #111111;
 }
 
 .plan-label {
   font-size: 24rpx;
-  color: #999999;
-  text-align: center;
+  color: #7f8879;
 }
 
-.login-hint {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 30rpx;
+.login-card {
+  margin-top: 24rpx;
 }
 
-.login-hint-text {
-  color: #07c160;
+.login-card-title {
+  display: block;
   font-size: 30rpx;
-  font-weight: 500;
+  font-weight: 700;
+  color: #111111;
+}
+
+.login-card-desc {
+  display: block;
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  line-height: 1.6;
+  color: #7d8677;
+}
+
+.home-illustration-block {
+  margin-top: 36rpx;
+  padding-top: 12rpx;
+}
+
+.home-illustration-note {
+  display: block;
+  margin-bottom: 18rpx;
+  font-size: 24rpx;
+  text-align: center;
+  color: #98a093;
+}
+
+.home-illustration {
+  display: block;
+  width: 100%;
+  opacity: 0.58;
 }
 </style>
