@@ -1,14 +1,14 @@
-package com.binghetao.service.impl;
+package com.greengo.impl;
 
-import com.binghetao.domain.Booking;
-import com.binghetao.domain.Payment;
-import com.binghetao.domain.PricingPlan;
-import com.binghetao.domain.Scooter;
-import com.binghetao.mapper.BookingMapper;
-import com.binghetao.mapper.PricingPlanMapper;
-import com.binghetao.mapper.ScooterMapper;
-import com.binghetao.service.PaymentService;
-import com.binghetao.utils.ThreadLocalUtil;
+import com.greengo.domain.Booking;
+import com.greengo.domain.Payment;
+import com.greengo.domain.PricingPlan;
+import com.greengo.domain.Scooter;
+import com.greengo.mapper.BookingMapper;
+import com.greengo.mapper.PricingPlanMapper;
+import com.greengo.mapper.ScooterMapper;
+import com.greengo.service.PaymentService;
+import com.greengo.utils.ThreadLocalUtil;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -46,11 +46,12 @@ class BookingServiceImplTest {
     @Mock
     private ScooterMapper scooterMapper;
 
-    private BookingServiceImpl bookingService;
+
+    private com.greengo.service.impl.BookingServiceImpl bookingService;
 
     @BeforeEach
     void setUp() {
-        bookingService = new BookingServiceImpl();
+        bookingService = new com.greengo.service.impl.BookingServiceImpl();
         ReflectionTestUtils.setField(bookingService, "pricingPlanMapper", pricingPlanMapper);
         ReflectionTestUtils.setField(bookingService, "paymentService", paymentService);
         ReflectionTestUtils.setField(bookingService, "scooterMapper", scooterMapper);
@@ -99,10 +100,73 @@ class BookingServiceImplTest {
     }
 
     @Test
+    void modifyBookingPeriodUpdatesPendingBookingWithNewPlan() {
+        LocalDateTime startTime = LocalDateTime.now();
+        Booking booking = Booking.builder()
+                .id(10L)
+                .userId(1L)
+                .pricingPlanId(2L)
+                .startTime(startTime)
+                .endTime(startTime.plusHours(1))
+                .totalCost(new BigDecimal("5.00"))
+                .status("PENDING")
+                .build();
+        PricingPlan newPlan = PricingPlan.builder()
+                .id(3L)
+                .hirePeriod("DAY_1")
+                .price(new BigDecimal("30.00"))
+                .build();
+        when(bookingMapper.selectById(10L)).thenReturn(booking);
+        when(pricingPlanMapper.selectOne(any())).thenReturn(newPlan);
+        when(bookingMapper.updateById(booking)).thenReturn(1);
+
+        Booking updated = bookingService.modifyBookingPeriod(10L, "DAY_1");
+
+        assertEquals(3L, updated.getPricingPlanId());
+        assertEquals(startTime.plusDays(1), updated.getEndTime());
+        assertEquals(new BigDecimal("30.00"), updated.getTotalCost());
+        assertEquals("PENDING", updated.getStatus());
+        verify(bookingMapper).updateById(booking);
+    }
+
+    @Test
+    void modifyBookingPeriodRejectsActiveBooking() {
+        Booking booking = Booking.builder()
+                .id(10L)
+                .userId(1L)
+                .status("ACTIVE")
+                .build();
+        when(bookingMapper.selectById(10L)).thenReturn(booking);
+
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> bookingService.modifyBookingPeriod(10L, "HOUR_4"));
+
+        assertEquals("Only pending bookings can change hire period", error.getMessage());
+        verify(bookingMapper, never()).updateById(booking);
+    }
+
+    @Test
+    void modifyBookingPeriodRejectsBookingOwnedByAnotherUser() {
+        Booking booking = Booking.builder()
+                .id(10L)
+                .userId(2L)
+                .status("PENDING")
+                .build();
+        when(bookingMapper.selectById(10L)).thenReturn(booking);
+
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> bookingService.modifyBookingPeriod(10L, "HOUR_4"));
+
+        assertEquals("Not your booking", error.getMessage());
+        verify(bookingMapper, never()).updateById(any(Booking.class));
+    }
+
+    @Test
     void bookScooterRejectsWhenCurrentUserAlreadyHasOpenBooking() {
         PricingPlan plan = PricingPlan.builder()
                 .id(2L)
                 .hirePeriod("HOUR_1")
+                .price(new BigDecimal("5.00"))
                 .build();
         when(pricingPlanMapper.selectOne(any())).thenReturn(plan);
         when(bookingMapper.selectCount(any())).thenReturn(1L);
@@ -120,6 +184,7 @@ class BookingServiceImplTest {
         PricingPlan plan = PricingPlan.builder()
                 .id(2L)
                 .hirePeriod("HOUR_4")
+                .price(new BigDecimal("15.00"))
                 .build();
         Scooter scooter = Scooter.builder()
                 .id(1L)
@@ -207,6 +272,97 @@ class BookingServiceImplTest {
     }
 
     @Test
+    void renewBookingExtendsActiveBookingAndKeepsOriginalPlan() {
+        LocalDateTime originalEndTime = LocalDateTime.now().plusHours(4);
+        Booking booking = Booking.builder()
+                .id(10L)
+                .userId(1L)
+                .pricingPlanId(2L)
+                .endTime(originalEndTime)
+                .totalCost(new BigDecimal("15.00"))
+                .status("ACTIVE")
+                .build();
+        PricingPlan renewalPlan = PricingPlan.builder()
+                .id(4L)
+                .hirePeriod("HOUR_1")
+                .price(new BigDecimal("5.00"))
+                .build();
+        when(bookingMapper.selectById(10L)).thenReturn(booking);
+        when(pricingPlanMapper.selectOne(any())).thenReturn(renewalPlan);
+        when(bookingMapper.selectCount(any())).thenReturn(0L);
+        when(bookingMapper.updateById(booking)).thenReturn(1);
+
+        Booking updated = bookingService.renewBooking(10L, "HOUR_1");
+
+        assertEquals(2L, updated.getPricingPlanId());
+        assertEquals(originalEndTime.plusHours(1), updated.getEndTime());
+        assertEquals(new BigDecimal("20.00"), updated.getTotalCost());
+        assertEquals("ACTIVE", updated.getStatus());
+        verify(bookingMapper).updateById(booking);
+    }
+
+    @Test
+    void renewBookingRejectsWhenExtendedPeriodOverlapsAnotherOpenBooking() {
+        Booking booking = Booking.builder()
+                .id(10L)
+                .userId(1L)
+                .scooterId(3L)
+                .endTime(LocalDateTime.now().plusHours(4))
+                .totalCost(new BigDecimal("15.00"))
+                .status("ACTIVE")
+                .build();
+        PricingPlan renewalPlan = PricingPlan.builder()
+                .id(4L)
+                .hirePeriod("HOUR_4")
+                .price(new BigDecimal("15.00"))
+                .build();
+        when(bookingMapper.selectById(10L)).thenReturn(booking);
+        when(pricingPlanMapper.selectOne(any())).thenReturn(renewalPlan);
+        when(bookingMapper.selectCount(any())).thenReturn(1L);
+
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> bookingService.renewBooking(10L, "HOUR_4"));
+
+        assertEquals("Scooter is not available for the extended period", error.getMessage());
+        verify(bookingMapper, never()).updateById(any(Booking.class));
+    }
+
+    @Test
+    void renewBookingRejectsPendingBooking() {
+        Booking booking = Booking.builder()
+                .id(10L)
+                .userId(1L)
+                .status("PENDING")
+                .build();
+        when(bookingMapper.selectById(10L)).thenReturn(booking);
+
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> bookingService.renewBooking(10L, "HOUR_1"));
+
+        assertEquals("Only active bookings can be renewed", error.getMessage());
+        verify(bookingMapper, never()).updateById(booking);
+    }
+
+    @Test
+    void renewBookingRejectsUnknownPricingPlan() {
+        Booking booking = Booking.builder()
+                .id(10L)
+                .userId(1L)
+                .endTime(LocalDateTime.now().plusHours(1))
+                .totalCost(new BigDecimal("5.00"))
+                .status("ACTIVE")
+                .build();
+        when(bookingMapper.selectById(10L)).thenReturn(booking);
+        when(pricingPlanMapper.selectOne(any())).thenReturn(null);
+
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> bookingService.renewBooking(10L, "UNKNOWN"));
+
+        assertEquals("Pricing plan not found", error.getMessage());
+        verify(bookingMapper, never()).updateById(any(Booking.class));
+    }
+
+    @Test
     void finishBookingReturnsUpdatedBookingAndPayment() {
         Booking completedBooking = Booking.builder()
                 .id(10L)
@@ -244,3 +400,4 @@ class BookingServiceImplTest {
         verify(paymentService).pay(10L);
     }
 }
+

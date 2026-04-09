@@ -1,8 +1,8 @@
-package com.binghetao.controller;
+package com.greengo.controller;
 
-import com.binghetao.domain.Result;
-import com.binghetao.domain.Scooter;
-import com.binghetao.service.ScooterService;
+import com.greengo.domain.Result;
+import com.greengo.domain.Scooter;
+import com.greengo.service.ScooterService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,3 +22,4 @@ public class ScooterController {
         return Result.success(scooterService.listAll());
     }
 }
+

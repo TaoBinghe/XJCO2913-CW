@@ -1,6 +1,6 @@
-package com.binghetao.service;
+package com.greengo.service;
 
-import com.binghetao.domain.PricingPlan;
+import com.greengo.domain.PricingPlan;
 
 import java.util.List;
 
@@ -34,3 +34,4 @@ public interface PricingPlanService {
      */
     boolean isUsedByBooking(Long pricingPlanId);
 }
+

@@ -1,11 +1,11 @@
-package com.binghetao.service.impl;
+package com.greengo.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.binghetao.domain.Booking;
-import com.binghetao.domain.PricingPlan;
-import com.binghetao.mapper.BookingMapper;
-import com.binghetao.mapper.PricingPlanMapper;
-import com.binghetao.service.PricingPlanService;
+import com.greengo.domain.Booking;
+import com.greengo.domain.PricingPlan;
+import com.greengo.mapper.BookingMapper;
+import com.greengo.mapper.PricingPlanMapper;
+import com.greengo.service.PricingPlanService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -97,3 +97,4 @@ public class PricingPlanServiceImpl implements PricingPlanService {
         return count != null && count > 0;
     }
 }
+

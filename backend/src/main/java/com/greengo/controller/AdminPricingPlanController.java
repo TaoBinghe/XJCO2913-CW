@@ -1,9 +1,9 @@
-package com.binghetao.controller;
+package com.greengo.controller;
 
-import com.binghetao.domain.PricingPlan;
-import com.binghetao.domain.Result;
-import com.binghetao.service.PricingPlanService;
-import com.binghetao.utils.AuthUtil;
+import com.greengo.domain.PricingPlan;
+import com.greengo.domain.Result;
+import com.greengo.service.PricingPlanService;
+import com.greengo.utils.AuthUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -43,16 +43,16 @@ public class AdminPricingPlanController {
             return Result.error("Forbidden: admin only");
         }
         if (plan.getHirePeriod() == null || plan.getHirePeriod().isBlank()) {
-            return Result.error("租期不能为空");
+            return Result.error("Hire period cannot be blank");
         }
         if (plan.getPrice() == null || plan.getPrice().compareTo(java.math.BigDecimal.ZERO) <= 0) {
-            return Result.error("价格必须大于 0");
+            return Result.error("Price must be greater than 0");
         }
         boolean ok = pricingPlanService.create(plan);
         if (ok) {
             return Result.success();
         }
-        return Result.error("租期已存在，请使用其他租期代码");
+        return Result.error("Hire period already exists; use a different hire period code");
     }
 
     @PutMapping("/{id}")
@@ -61,7 +61,7 @@ public class AdminPricingPlanController {
             return Result.error("Forbidden: admin only");
         }
         if (plan.getPrice() != null && plan.getPrice().compareTo(java.math.BigDecimal.ZERO) <= 0) {
-            return Result.error("价格必须大于 0");
+            return Result.error("Price must be greater than 0");
         }
         boolean ok = pricingPlanService.update(id, plan);
         if (ok) {
@@ -69,9 +69,9 @@ public class AdminPricingPlanController {
         }
         PricingPlan existing = pricingPlanService.getById(id);
         if (existing == null) {
-            return Result.error("定价方案不存在");
+            return Result.error("Pricing plan not found");
         }
-        return Result.error("更新失败，租期可能与其他方案重复");
+        return Result.error("Update failed; hire period may duplicate another pricing plan");
     }
 
     @DeleteMapping("/{id}")
@@ -80,15 +80,15 @@ public class AdminPricingPlanController {
             return Result.error("Forbidden: admin only");
         }
         if (pricingPlanService.getById(id) == null) {
-            return Result.error("定价方案不存在");
+            return Result.error("Pricing plan not found");
         }
         if (pricingPlanService.isUsedByBooking(id)) {
-            return Result.error("该定价已被订单使用，无法删除");
+            return Result.error("Pricing plan is used by existing bookings and cannot be deleted");
         }
         boolean ok = pricingPlanService.delete(id);
         if (ok) {
             return Result.success();
         }
-        return Result.error("删除失败");
+        return Result.error("Delete failed");
     }
 }

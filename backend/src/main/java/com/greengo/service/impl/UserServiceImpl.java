@@ -1,10 +1,10 @@
-package com.binghetao.service.impl;
+package com.greengo.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.binghetao.domain.User;
-import com.binghetao.mapper.UserMapper;
-import com.binghetao.service.UserService;
-import com.binghetao.utils.Md5Util;
+import com.greengo.domain.User;
+import com.greengo.mapper.UserMapper;
+import com.greengo.service.UserService;
+import com.greengo.utils.Md5Util;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -42,3 +42,4 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 .one();
     }
 }
+

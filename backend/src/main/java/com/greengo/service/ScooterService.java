@@ -1,6 +1,6 @@
-package com.binghetao.service;
+package com.greengo.service;
 
-import com.binghetao.domain.Scooter;
+import com.greengo.domain.Scooter;
 
 import java.util.List;
 
@@ -15,4 +15,5 @@ public interface ScooterService {
 
     boolean deleteScooter(Long id);
 }
+
 

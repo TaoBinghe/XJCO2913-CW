@@ -1,12 +1,12 @@
-package com.binghetao.service.impl;
+package com.greengo.impl;
 
-import com.binghetao.domain.Booking;
-import com.binghetao.domain.Payment;
-import com.binghetao.domain.Scooter;
-import com.binghetao.mapper.BookingMapper;
-import com.binghetao.mapper.PaymentMapper;
-import com.binghetao.mapper.ScooterMapper;
-import com.binghetao.utils.ThreadLocalUtil;
+import com.greengo.domain.Booking;
+import com.greengo.domain.Payment;
+import com.greengo.domain.Scooter;
+import com.greengo.mapper.BookingMapper;
+import com.greengo.mapper.PaymentMapper;
+import com.greengo.mapper.ScooterMapper;
+import com.greengo.utils.ThreadLocalUtil;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -42,11 +42,11 @@ class PaymentServiceImplTest {
     @Mock
     private ScooterMapper scooterMapper;
 
-    private PaymentServiceImpl paymentService;
+    private com.greengo.service.impl.PaymentServiceImpl paymentService;
 
     @BeforeEach
     void setUp() {
-        paymentService = new PaymentServiceImpl();
+        paymentService = new com.greengo.service.impl.PaymentServiceImpl();
         ReflectionTestUtils.setField(paymentService, "paymentMapper", paymentMapper);
         ReflectionTestUtils.setField(paymentService, "bookingMapper", bookingMapper);
         ReflectionTestUtils.setField(paymentService, "scooterMapper", scooterMapper);
@@ -162,3 +162,4 @@ class PaymentServiceImplTest {
         verify(scooterMapper, never()).updateById(any(Scooter.class));
     }
 }
+

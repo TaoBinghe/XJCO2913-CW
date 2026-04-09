@@ -1,8 +1,9 @@
-package com.binghetao.service.impl;
+package com.greengo.impl;
 
-import com.binghetao.domain.Scooter;
-import com.binghetao.mapper.ScooterMapper;
-import com.binghetao.service.GeoAddressService;
+import com.greengo.domain.Scooter;
+import com.greengo.mapper.ScooterMapper;
+import com.greengo.service.GeoAddressService;
+import com.greengo.service.impl.ScooterServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -119,3 +120,4 @@ class ScooterServiceImplTest {
         assertEquals("Resolved Campus North Gate", scooters.get(0).getLocation());
     }
 }
+

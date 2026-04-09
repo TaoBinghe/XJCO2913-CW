@@ -1,6 +1,6 @@
-package com.binghetao.service;
+package com.greengo.service;
 
-import com.binghetao.domain.Payment;
+import com.greengo.domain.Payment;
 
 // Simulated payment for booking, no real card
 public interface PaymentService {
@@ -8,3 +8,4 @@ public interface PaymentService {
     // Pay for booking by id, returns payment record
     Payment pay(Long bookingId);
 }
+

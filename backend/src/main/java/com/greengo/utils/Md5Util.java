@@ -1,4 +1,4 @@
-package com.binghetao.utils;
+package com.greengo.utils;
 
 
 import java.security.MessageDigest;
@@ -59,3 +59,4 @@ public class Md5Util {
     }
 
 }
+

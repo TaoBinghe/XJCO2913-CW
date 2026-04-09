@@ -1,8 +1,9 @@
-package com.binghetao.mapper;
+package com.greengo.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.binghetao.domain.PricingPlan;
+import com.greengo.domain.PricingPlan;
 
 public interface PricingPlanMapper extends BaseMapper<PricingPlan> {
 }
+
 

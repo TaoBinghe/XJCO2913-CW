@@ -1,14 +1,14 @@
-package com.binghetao.service.impl;
+package com.greengo.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.binghetao.domain.Booking;
-import com.binghetao.domain.Payment;
-import com.binghetao.domain.Scooter;
-import com.binghetao.mapper.BookingMapper;
-import com.binghetao.mapper.PaymentMapper;
-import com.binghetao.mapper.ScooterMapper;
-import com.binghetao.service.PaymentService;
-import com.binghetao.utils.ThreadLocalUtil;
+import com.greengo.domain.Booking;
+import com.greengo.domain.Payment;
+import com.greengo.domain.Scooter;
+import com.greengo.mapper.BookingMapper;
+import com.greengo.mapper.PaymentMapper;
+import com.greengo.mapper.ScooterMapper;
+import com.greengo.service.PaymentService;
+import com.greengo.utils.ThreadLocalUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -94,3 +94,4 @@ public class PaymentServiceImpl implements PaymentService {
         return payment;
     }
 }
+

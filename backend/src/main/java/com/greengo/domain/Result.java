@@ -1,4 +1,4 @@
-package com.binghetao.domain;
+package com.greengo.domain;
 
 
 import lombok.AllArgsConstructor;
@@ -32,3 +32,4 @@ public class Result<T> {
         return new Result(1, message, null);
     }
 }
+

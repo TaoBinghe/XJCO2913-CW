@@ -1,4 +1,4 @@
-package com.binghetao.utils;
+package com.greengo.utils;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -24,3 +24,4 @@ public class ThreadLocalUtil {
         THREAD_LOCAL.remove();
     }
 }
+

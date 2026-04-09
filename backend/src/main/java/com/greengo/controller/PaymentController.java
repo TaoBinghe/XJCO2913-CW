@@ -1,8 +1,8 @@
-package com.binghetao.controller;
+package com.greengo.controller;
 
-import com.binghetao.domain.Payment;
-import com.binghetao.domain.Result;
-import com.binghetao.service.PaymentService;
+import com.greengo.domain.Payment;
+import com.greengo.domain.Result;
+import com.greengo.service.PaymentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -28,3 +28,4 @@ public class PaymentController {
         }
     }
 }
+

@@ -1,8 +1,9 @@
-package com.binghetao.mapper;
+package com.greengo.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.binghetao.domain.Scooter;
+import com.greengo.domain.Scooter;
 
 public interface ScooterMapper extends BaseMapper<Scooter> {
 }
+
 

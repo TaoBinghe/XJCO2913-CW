@@ -1,6 +1,6 @@
-package com.binghetao.service;
+package com.greengo.service;
 
-import com.binghetao.domain.User;
+import com.greengo.domain.User;
 
 import java.util.List;
 
@@ -15,3 +15,4 @@ public interface UserService {
 
     List<User> listAll();
 }
+

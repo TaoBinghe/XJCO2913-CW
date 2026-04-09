@@ -1,10 +1,10 @@
-package com.binghetao.controller;
+package com.greengo.controller;
 
-import com.binghetao.domain.Result;
-import com.binghetao.domain.Scooter;
-import com.binghetao.service.GeoAddressService;
-import com.binghetao.service.ScooterService;
-import com.binghetao.utils.AuthUtil;
+import com.greengo.domain.Result;
+import com.greengo.domain.Scooter;
+import com.greengo.service.GeoAddressService;
+import com.greengo.service.ScooterService;
+import com.greengo.utils.AuthUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -80,4 +80,5 @@ public class AdminScooterController {
         return Result.error("Failed to delete scooter, record not found");
     }
 }
+
 

@@ -1,6 +1,6 @@
-package com.binghetao.config;
+package com.greengo.config;
 
-import com.binghetao.interceptors.LoginInterceptor;
+import com.greengo.interceptors.LoginInterceptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
@@ -33,3 +33,4 @@ public class WebConfig implements WebMvcConfigurer {
                 .maxAge(3600);
     }
 }
+

@@ -1,6 +1,6 @@
-package com.binghetao.service.impl;
+package com.greengo.service.impl;
 
-import com.binghetao.service.GeoAddressService;
+import com.greengo.service.GeoAddressService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -79,3 +79,4 @@ public class AmapGeoAddressService implements GeoAddressService {
         }
     }
 }
+

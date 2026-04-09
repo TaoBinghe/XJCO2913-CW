@@ -1,7 +1,8 @@
-package com.binghetao.mapper;
+package com.greengo.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.binghetao.domain.User;
+import com.greengo.domain.User;
 
 public interface UserMapper extends BaseMapper<User> {
 }
+

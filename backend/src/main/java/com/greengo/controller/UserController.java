@@ -1,12 +1,12 @@
-package com.binghetao.controller;
+package com.greengo.controller;
 
-import com.binghetao.domain.Booking;
-import com.binghetao.domain.Result;
-import com.binghetao.domain.User;
-import com.binghetao.service.BookingService;
-import com.binghetao.service.UserService;
-import com.binghetao.utils.JwtUtil;
-import com.binghetao.utils.ThreadLocalUtil;
+import com.greengo.domain.Booking;
+import com.greengo.domain.Result;
+import com.greengo.domain.User;
+import com.greengo.service.BookingService;
+import com.greengo.service.UserService;
+import com.greengo.utils.JwtUtil;
+import com.greengo.utils.ThreadLocalUtil;
 import jakarta.validation.constraints.Pattern;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
@@ -74,3 +74,4 @@ public class UserController {
         return Result.<List<Booking>>success(list);
     }
 }
+

@@ -1,4 +1,4 @@
-package com.binghetao.utils;
+package com.greengo.utils;
 
 import java.util.Map;
 
@@ -21,3 +21,4 @@ public final class AuthUtil {
         return role != null && "MANAGER".equalsIgnoreCase(role.toString());
     }
 }
+

@@ -1,4 +1,4 @@
-package com.binghetao.utils;
+package com.greengo.utils;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
@@ -29,3 +29,4 @@ public class JwtUtil {
     }
 
 }
+

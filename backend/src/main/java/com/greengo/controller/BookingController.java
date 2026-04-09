@@ -1,9 +1,9 @@
-package com.binghetao.controller;
+package com.greengo.controller;
 
-import com.binghetao.domain.Booking;
-import com.binghetao.domain.PricingPlan;
-import com.binghetao.domain.Result;
-import com.binghetao.service.BookingService;
+import com.greengo.domain.Booking;
+import com.greengo.domain.PricingPlan;
+import com.greengo.domain.Result;
+import com.greengo.service.BookingService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -47,11 +47,33 @@ public class BookingController {
         }
     }
 
+    // Change the hire period of a pending booking
+    @PostMapping("/modify-period")
+    public Result<?> modifyBookingPeriod(@RequestParam Long bookingId, @RequestParam String hiredPeriod) {
+        try {
+            Booking booking = bookingService.modifyBookingPeriod(bookingId, hiredPeriod);
+            return Result.success(booking);
+        } catch (IllegalArgumentException e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
     // Cancel a pending booking before it becomes active
     @PostMapping("/cancel")
     public Result<?> cancelBooking(@RequestParam Long bookingId) {
         try {
             Booking booking = bookingService.cancelBooking(bookingId);
+            return Result.success(booking);
+        } catch (IllegalArgumentException e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    // Extend an active booking by another fixed hire period
+    @PostMapping("/renew")
+    public Result<?> renewBooking(@RequestParam Long bookingId, @RequestParam String hiredPeriod) {
+        try {
+            Booking booking = bookingService.renewBooking(bookingId, hiredPeriod);
             return Result.success(booking);
         } catch (IllegalArgumentException e) {
             return Result.error(e.getMessage());
@@ -70,4 +92,5 @@ public class BookingController {
     }
 
 }
+
 

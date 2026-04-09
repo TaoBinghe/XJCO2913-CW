@@ -1,11 +1,11 @@
-package com.binghetao.service.impl;
+package com.greengo.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.binghetao.domain.Scooter;
-import com.binghetao.mapper.ScooterMapper;
-import com.binghetao.service.GeoAddressService;
-import com.binghetao.service.ScooterService;
+import com.greengo.domain.Scooter;
+import com.greengo.mapper.ScooterMapper;
+import com.greengo.service.GeoAddressService;
+import com.greengo.service.ScooterService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -60,7 +60,7 @@ public class ScooterServiceImpl extends ServiceImpl<ScooterMapper, Scooter> impl
             return false;
         }
 
-        // 如果修改业务编号，需要检查唯一性
+        // If the scooter code changes, verify it remains unique.
         String scooterCode = scooter.getScooterCode();
         if (scooterCode != null && !scooterCode.equals(existing.getScooterCode())) {
             LambdaQueryWrapper<Scooter> wrapper = new LambdaQueryWrapper<>();
@@ -122,4 +122,3 @@ public class ScooterServiceImpl extends ServiceImpl<ScooterMapper, Scooter> impl
         return value.compareTo(min) >= 0 && value.compareTo(max) <= 0;
     }
 }
-

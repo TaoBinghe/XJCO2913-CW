@@ -1,10 +1,10 @@
-package com.binghetao.controller;
+package com.greengo.controller;
 
-import com.binghetao.domain.Result;
-import com.binghetao.domain.User;
-import com.binghetao.service.UserService;
-import com.binghetao.utils.AuthUtil;
-import com.binghetao.utils.JwtUtil;
+import com.greengo.domain.Result;
+import com.greengo.domain.User;
+import com.greengo.service.UserService;
+import com.greengo.utils.AuthUtil;
+import com.greengo.utils.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -50,4 +50,5 @@ public class AdminController {
         return Result.success(token);
     }
 }
+
 

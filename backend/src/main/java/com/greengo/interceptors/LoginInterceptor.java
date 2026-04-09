@@ -1,8 +1,8 @@
-package com.binghetao.interceptors;
+package com.greengo.interceptors;
 
 
-import com.binghetao.utils.JwtUtil;
-import com.binghetao.utils.ThreadLocalUtil;
+import com.greengo.utils.JwtUtil;
+import com.greengo.utils.ThreadLocalUtil;
 import io.micrometer.common.lang.Nullable;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -44,3 +44,4 @@ public class LoginInterceptor implements HandlerInterceptor {
         ThreadLocalUtil.remove();
     }
 }
+
