@@ -1,61 +1,70 @@
 <template>
-  <view class="login-page">
-    <view class="login-header">
-      <view class="logo-circle">
-        <text class="logo-icon">⚡</text>
-      </view>
-      <text class="page-title">E-Scooter Rental</text>
-      <text class="page-subtitle">Login to start your ride</text>
-    </view>
+  <view class="auth-page">
+    <view class="auth-glow auth-glow-top"></view>
+    <view class="auth-glow auth-glow-bottom"></view>
 
-    <view class="login-form">
-      <view class="input-group">
-        <text class="input-label">Username</text>
-        <input
-          class="input-field"
-          v-model="username"
-          placeholder="Enter username (5-16 characters)"
-          maxlength="16"
-        />
+    <view class="auth-shell">
+      <view class="auth-copy">
+        <text class="auth-kicker">GREEN MOBILITY</text>
+        <text class="auth-title">Welcome Back</text>
+        <text class="auth-subtitle"></text>
       </view>
 
-      <view class="input-group">
-        <text class="input-label">Password</text>
-        <input
-          class="input-field"
-          v-model="password"
-          type="password"
-          placeholder="Enter password (5-16 characters)"
-          maxlength="16"
-        />
+      <view class="auth-form">
+        <view class="auth-field">
+          <text class="auth-label">Username</text>
+          <input
+            class="auth-input"
+            v-model="username"
+            placeholder="Enter a username"
+            placeholder-style="color: #b7bdb5"
+            maxlength="16"
+            confirm-type="next"
+          />
+        </view>
+
+        <view class="auth-field">
+          <text class="auth-label">Password</text>
+          <input
+            class="auth-input"
+            v-model="password"
+            type="password"
+            placeholder="Enter a password"
+            placeholder-style="color: #b7bdb5"
+            maxlength="16"
+            confirm-type="done"
+            @confirm="handleLogin"
+          />
+        </view>
+
+        <button class="btn-primary auth-submit" :loading="loading" @click="handleLogin">
+          Login
+        </button>
+
+        <view class="auth-links">
+          <text class="auth-link" @click="goRegister">No account yet? Sign up</text>
+        </view>
       </view>
 
-      <button class="btn-primary" :loading="loading" @click="handleLogin">
-        Login
-      </button>
-
-      <view class="login-footer">
-        <text class="link-text" @click="goRegister">
-          Don't have an account? Register
-        </text>
-        <text class="link-text admin-link" @click="goAdminLogin">
-          Admin Login
-        </text>
+      <view class="auth-illustration-block">
+        <image class="auth-illustration" :src="illustrationSrc" mode="widthFix" />
       </view>
     </view>
   </view>
 </template>
 
 <script>
+import loginBackground from '@/static/login_background.png'
 import { login } from '@/api/user'
-import { setToken, setUsername, setUserRole } from '@/utils/auth'
+import { setToken, setUsername } from '@/utils/auth'
 
 export default {
   data() {
     return {
       username: '',
       password: '',
-      loading: false
+      loading: false,
+      illustrationSrc: loginBackground
     }
   },
   methods: {
@@ -74,7 +83,6 @@ export default {
         const res = await login(this.username, this.password)
         setToken(res.data)
         setUsername(this.username)
-        setUserRole('CUSTOMER')
         uni.showToast({ title: 'Login successful', icon: 'success' })
         setTimeout(() => {
           uni.switchTab({ url: '/pages/index/index' })
@@ -87,84 +95,180 @@ export default {
     },
     goRegister() {
       uni.navigateTo({ url: '/pages/register/register' })
-    },
-    goAdminLogin() {
-      uni.navigateTo({ url: '/pages/admin-login/admin-login' })
     }
   }
 }
 </script>
 
 <style scoped>
-.login-page {
+.auth-page {
+  position: relative;
   min-height: 100vh;
-  background: linear-gradient(180deg, #07c160 0%, #f5f7f5 40%);
-  padding: 0 40rpx;
+  background: #ffffff;
+  overflow: hidden;
+  padding: 0 36rpx;
+  padding-top: calc(48rpx + constant(safe-area-inset-top));
+  padding-top: calc(48rpx + env(safe-area-inset-top));
   padding-bottom: calc(40rpx + constant(safe-area-inset-bottom));
   padding-bottom: calc(40rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
 }
 
-.login-header {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+.auth-shell {
+  position: relative;
+  z-index: 1;
   width: 100%;
   max-width: 680rpx;
+  min-height: 100%;
   margin: 0 auto;
-  padding-top: calc(72rpx + constant(safe-area-inset-top));
-  padding-top: calc(72rpx + env(safe-area-inset-top));
-  padding-bottom: 60rpx;
+  display: flex;
+  flex-direction: column;
   box-sizing: border-box;
 }
 
-.logo-circle {
-  width: 140rpx;
-  height: 140rpx;
-  background-color: #ffffff;
-  border-radius: 70rpx;
+.auth-glow {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.auth-glow-top {
+  top: -180rpx;
+  right: -220rpx;
+  width: 560rpx;
+  height: 560rpx;
+  background: radial-gradient(circle, rgba(210, 255, 38, 0.32) 0%, rgba(210, 255, 38, 0) 72%);
+}
+
+.auth-glow-bottom {
+  left: -180rpx;
+  bottom: 120rpx;
+  width: 420rpx;
+  height: 420rpx;
+  background: radial-gradient(circle, rgba(164, 240, 103, 0.18) 0%, rgba(164, 240, 103, 0) 70%);
+}
+
+.auth-copy {
+  margin-top: 12rpx;
+}
+
+.auth-kicker {
+  display: block;
+  font-size: 24rpx;
+  letter-spacing: 6rpx;
+  color: #89a54c;
+}
+
+.auth-title {
+  display: block;
+  margin-top: 24rpx;
+  font-size: 64rpx;
+  line-height: 1.14;
+  font-weight: 700;
+  color: #111111;
+}
+
+.auth-subtitle {
+  display: block;
+  max-width: 560rpx;
+  margin-top: 20rpx;
+  font-size: 28rpx;
+  line-height: 1.7;
+  color: #687260;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 22rpx;
+  margin-top: 56rpx;
+}
+
+.auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 14rpx;
+}
+
+.auth-label {
+  padding-left: 12rpx;
+  font-size: 26rpx;
+  color: #5f6b58;
+}
+
+.auth-input {
+  width: 100%;
+  height: 108rpx;
+  padding: 0 34rpx;
+  border: 3rpx solid #d2dacb;
+  border-radius: 54rpx;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 0 0 2rpx rgba(210, 218, 203, 0.18), 0 18rpx 40rpx rgba(17, 17, 17, 0.04);
+  box-sizing: border-box;
+  font-size: 30rpx;
+  color: #111111;
+}
+
+.auth-submit {
+  width: 100%;
+  height: 108rpx;
+  line-height: 108rpx;
+  margin-top: 8rpx;
+  margin-left: 0;
+  margin-right: 0;
+  padding: 0;
+  border: none;
+  border-radius: 54rpx;
+  background: linear-gradient(135deg, #efff84 0%, #e2ff6b 100%);
+  color: #111111;
+  font-size: 34rpx;
+  font-weight: 700;
+  letter-spacing: 2rpx;
+  box-shadow: 0 20rpx 44rpx rgba(226, 255, 107, 0.24);
+}
+
+.auth-submit:active {
+  background: linear-gradient(135deg, #e6f973 0%, #d8f55a 100%);
+}
+
+.auth-links {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 30rpx;
-  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.1);
+  flex-wrap: wrap;
+  gap: 18rpx;
+  margin-top: 8rpx;
+  padding: 0 8rpx;
 }
 
-.logo-icon {
-  font-size: 64rpx;
-}
-
-.login-header .page-title {
-  color: #ffffff;
-  font-size: 44rpx;
-}
-
-.login-header .page-subtitle {
-  color: rgba(255, 255, 255, 0.85);
-  margin-bottom: 0;
-}
-
-.login-form {
-  background-color: #ffffff;
-  border-radius: 24rpx;
-  padding: 48rpx 36rpx;
-  box-shadow: 0 4rpx 24rpx rgba(0, 0, 0, 0.06);
+.auth-link {
   width: 100%;
-  max-width: 680rpx;
-  margin: 0 auto;
-  box-sizing: border-box;
+  font-size: 26rpx;
+  color: #24311f;
+  text-align: center;
 }
 
-.login-footer {
-  margin-top: 36rpx;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 20rpx;
+.auth-link-secondary {
+  color: #8a9384;
 }
 
-.admin-link {
-  color: #999999 !important;
-  font-size: 26rpx !important;
+.auth-illustration-block {
+  margin-top: auto;
+  padding-top: 48rpx;
+}
+
+.auth-illustration-note {
+  display: block;
+  margin-bottom: 20rpx;
+  font-size: 24rpx;
+  text-align: center;
+  letter-spacing: 2rpx;
+  color: #98a093;
+}
+
+.auth-illustration {
+  display: block;
+  width: 100%;
+  opacity: 0.72;
 }
 </style>

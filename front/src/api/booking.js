@@ -16,11 +16,11 @@ export function createBooking(scooterId, hiredPeriod) {
   })
 }
 
-export function activateBooking(bookingId) {
+export function updateBookingStatus(bookingId, status) {
   return request({
-    url: '/booking/activate',
+    url: '/booking/status',
     method: 'POST',
-    data: { bookingId },
+    data: { bookingId, status },
     contentType: 'query'
   })
 }

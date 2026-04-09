@@ -1,67 +1,72 @@
 <template>
-  <view class="booking-page container">
-    <text class="page-title">Book a Scooter</text>
-    <text class="page-subtitle">Enter scooter ID and select a plan</text>
+  <view class="theme-page booking-page">
+    <view class="theme-glow theme-glow-top"></view>
+    <view class="theme-glow theme-glow-bottom"></view>
 
-    <!-- Scooter ID Input -->
-    <view class="card">
-      <text class="section-title">Scooter ID</text>
-      <input
-        class="input-field"
-        v-model="scooterId"
-        type="number"
-        placeholder="Enter scooter ID (e.g. 1)"
-      />
-    </view>
-
-    <!-- Pricing Plans -->
-    <view class="card">
-      <text class="section-title">Select Plan</text>
-
-      <view v-if="loading" class="loading-state">
-        <text>Loading plans...</text>
+    <view class="theme-shell">
+      <view class="theme-hero">
+        <text class="theme-kicker">READY TO GO</text>
+        <text class="theme-headline">Book a Scooter</text>
+        <text class="theme-copy">Enter a scooter ID, choose a pricing plan, and confirm the booking. The scooter will stay pending until you activate it.</text>
       </view>
 
-      <view v-else class="plan-list">
-        <view
-          class="plan-option"
-          :class="{ active: selectedPeriod === plan.hirePeriod }"
-          v-for="plan in plans"
-          :key="plan.id"
-          @click="selectPlan(plan)"
-        >
-          <view class="plan-option-left">
-            <view class="radio-circle" :class="{ checked: selectedPeriod === plan.hirePeriod }">
-              <view v-if="selectedPeriod === plan.hirePeriod" class="radio-dot"></view>
+      <view class="card">
+        <text class="section-title">Scooter ID</text>
+        <text class="field-note">Type the scooter number you want to reserve first.</text>
+        <input
+          class="input-field"
+          v-model="scooterId"
+          type="number"
+          placeholder="Enter scooter ID"
+          placeholder-style="color: #b7bdb5"
+        />
+      </view>
+
+      <view class="card">
+        <text class="section-title">Select Plan</text>
+        <text class="field-note">Choose the duration that matches your route.</text>
+
+        <view v-if="loading" class="loading-card">
+          <text>Loading plans...</text>
+        </view>
+
+        <view v-else class="plan-list">
+          <view
+            class="plan-option"
+            :class="{ active: selectedPeriod === plan.hirePeriod }"
+            v-for="plan in plans"
+            :key="plan.id"
+            @click="selectPlan(plan)"
+          >
+            <view class="plan-option-copy">
+              <view class="plan-check" :class="{ active: selectedPeriod === plan.hirePeriod }"></view>
+              <text class="plan-name">{{ formatPeriod(plan.hirePeriod) }}</text>
             </view>
-            <text class="plan-option-name">{{ formatPeriod(plan.hirePeriod) }}</text>
+            <text class="plan-price">£{{ plan.price.toFixed(2) }}</text>
           </view>
-          <text class="plan-option-price">£{{ plan.price.toFixed(2) }}</text>
         </view>
       </view>
-    </view>
 
-    <!-- Summary -->
-    <view v-if="selectedPlan" class="card summary-card">
-      <text class="section-title">Booking Summary</text>
-      <view class="summary-row">
-        <text class="summary-label">Scooter</text>
-        <text class="summary-value">#{{ scooterId || '-' }}</text>
+      <view v-if="selectedPlan" class="card summary-card">
+        <text class="section-title">Booking Summary</text>
+        <view class="summary-row">
+          <text class="summary-label">Scooter</text>
+          <text class="summary-value">#{{ scooterId || '-' }}</text>
+        </view>
+        <view class="summary-row">
+          <text class="summary-label">Plan</text>
+          <text class="summary-value">{{ formatPeriod(selectedPlan.hirePeriod) }}</text>
+        </view>
+        <view class="summary-row">
+          <text class="summary-label">Price</text>
+          <text class="summary-value summary-price">£{{ selectedPlan.price.toFixed(2) }}</text>
+        </view>
       </view>
-      <view class="summary-row">
-        <text class="summary-label">Plan</text>
-        <text class="summary-value">{{ formatPeriod(selectedPlan.hirePeriod) }}</text>
-      </view>
-      <view class="summary-row">
-        <text class="summary-label">Price</text>
-        <text class="summary-value price-highlight">£{{ selectedPlan.price.toFixed(2) }}</text>
-      </view>
-    </view>
 
-    <!-- Confirm Button -->
-    <button class="btn-primary confirm-btn" :loading="submitting" @click="handleBook">
-      Confirm Booking
-    </button>
+      <button class="btn-primary booking-button" :loading="submitting" @click="handleBook">
+        Confirm Booking
+      </button>
+    </view>
   </view>
 </template>
 
@@ -106,10 +111,10 @@ export default {
     },
     formatPeriod(period) {
       const map = {
-        'HOUR_1': '1 Hour',
-        'HOUR_4': '4 Hours',
-        'DAY_1': '1 Day',
-        'WEEK_1': '1 Week'
+        HOUR_1: '1 Hour',
+        HOUR_4: '4 Hours',
+        DAY_1: '1 Day',
+        WEEK_1: '1 Week'
       }
       return map[period] || period
     },
@@ -126,7 +131,7 @@ export default {
       this.submitting = true
       try {
         await createBooking(this.scooterId, this.selectedPeriod)
-        uni.showToast({ title: 'Booking created!', icon: 'success' })
+        uni.showToast({ title: 'Booking pending', icon: 'success' })
         setTimeout(() => {
           uni.switchTab({ url: '/pages/orders/orders' })
         }, 1000)
@@ -141,90 +146,77 @@ export default {
 </script>
 
 <style scoped>
-.booking-page {
-  min-height: 100vh;
-  padding-top: 30rpx;
-  padding-bottom: calc(60rpx + constant(safe-area-inset-bottom));
-  padding-bottom: calc(60rpx + env(safe-area-inset-bottom));
-  width: 100%;
-  max-width: 960rpx;
-  margin: 0 auto;
-  box-sizing: border-box;
+.field-note {
+  display: block;
+  margin-top: 10rpx;
+  margin-bottom: 18rpx;
+  font-size: 24rpx;
+  color: #98a093;
 }
 
-.loading-state {
-  padding: 40rpx;
+.loading-card {
+  padding: 28rpx 0 4rpx;
   text-align: center;
-  color: #999999;
+  color: #7d8677;
 }
 
 .plan-list {
   display: flex;
   flex-direction: column;
-  gap: 20rpx;
+  gap: 16rpx;
+  margin-top: 20rpx;
 }
 
 .plan-option {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 28rpx 24rpx;
-  background-color: #f5f7f5;
-  border-radius: 12rpx;
-  border: 2rpx solid transparent;
-  transition: all 0.2s;
   gap: 20rpx;
+  padding: 24rpx 24rpx;
+  border: 2rpx solid #e8ede3;
+  border-radius: 28rpx;
+  background: #fbfcf8;
 }
 
 .plan-option.active {
-  border-color: #07c160;
-  background-color: #e8f5e9;
+  border-color: #d8ef8c;
+  background: #f7fbeb;
 }
 
-.plan-option-left {
+.plan-option-copy {
   display: flex;
   align-items: center;
-  gap: 20rpx;
+  gap: 18rpx;
   flex: 1;
   min-width: 0;
 }
 
-.radio-circle {
-  width: 40rpx;
-  height: 40rpx;
-  border-radius: 20rpx;
-  border: 3rpx solid #cccccc;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.radio-circle.checked {
-  border-color: #07c160;
-}
-
-.radio-dot {
-  width: 22rpx;
-  height: 22rpx;
-  border-radius: 11rpx;
-  background-color: #07c160;
-}
-
-.plan-option-name {
-  font-size: 30rpx;
-  font-weight: 500;
-  color: #333333;
-  flex: 1;
-  min-width: 0;
-  line-height: 1.4;
-  word-break: break-word;
-}
-
-.plan-option-price {
-  font-size: 32rpx;
-  font-weight: 600;
-  color: #07c160;
+.plan-check {
+  width: 28rpx;
+  height: 28rpx;
+  border-radius: 50%;
+  border: 3rpx solid #c6cec0;
+  background: #ffffff;
   flex-shrink: 0;
+}
+
+.plan-check.active {
+  border-color: #9abf3e;
+  background: #e2ff6b;
+}
+
+.plan-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #111111;
+}
+
+.plan-price {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #5d8c22;
 }
 
 .summary-card {
@@ -235,9 +227,9 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  padding: 16rpx 0;
-  border-bottom: 1rpx solid #f0f0f0;
   gap: 20rpx;
+  padding: 14rpx 0;
+  border-bottom: 1rpx solid #edf0e8;
 }
 
 .summary-row:last-child {
@@ -245,29 +237,25 @@ export default {
 }
 
 .summary-label {
-  font-size: 28rpx;
-  color: #666666;
-  flex-shrink: 0;
+  font-size: 25rpx;
+  color: #8c9587;
 }
 
 .summary-value {
-  font-size: 28rpx;
-  font-weight: 500;
-  color: #333333;
   flex: 1;
   min-width: 0;
+  font-size: 27rpx;
   text-align: right;
+  color: #111111;
   word-break: break-all;
 }
 
-.price-highlight {
-  font-size: 34rpx;
-  color: #07c160;
+.summary-price {
   font-weight: 700;
+  color: #5d8c22;
 }
 
-.confirm-btn {
-  margin-top: 40rpx;
-  margin-bottom: 0;
+.booking-button {
+  margin-top: 18rpx;
 }
 </style>
