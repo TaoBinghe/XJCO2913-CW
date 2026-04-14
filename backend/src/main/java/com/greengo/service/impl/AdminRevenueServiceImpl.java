@@ -7,6 +7,8 @@ import com.greengo.mapper.PaymentMapper;
 import com.greengo.mapper.PricingPlanMapper;
 import com.greengo.service.AdminRevenueService;
 import com.greengo.utils.PricingPlanPeriodUtil;
+import com.greengo.utils.RedisCacheNames;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -31,6 +33,7 @@ public class AdminRevenueServiceImpl implements AdminRevenueService {
     private Clock clock = Clock.systemDefaultZone();
 
     @Override
+    @Cacheable(value = RedisCacheNames.ADMIN_WEEKLY_REVENUE, key = "'weekly'")
     public AdminWeeklyRevenueSummary getWeeklyRevenueSummary() {
         LocalDateTime windowEnd = LocalDateTime.now(clock);
         LocalDateTime windowStart = windowEnd.minusDays(7);

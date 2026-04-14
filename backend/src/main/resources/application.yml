@@ -1,9 +1,19 @@
 spring:
+  cache:
+    type: redis
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    username: root
-    password: root
-    url: jdbc:mysql://localhost:3306/xjco2913
+    url: ${DB_URL:jdbc:mysql://127.0.0.1:3306/xjco2913?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&characterEncoding=utf8}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:20041230Tbh}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      username: ${REDIS_USERNAME:}
+      password: ${REDIS_PASSWORD:20041230Tbh}
+      database: ${REDIS_DATABASE:0}
+      timeout: ${REDIS_TIMEOUT:3s}
 
 mybatis-plus:
   configuration:
@@ -13,3 +23,7 @@ server:
 
 amap:
   web-service-key: b80cd8c8c349779a5392f5f076ca7f97
+
+app:
+  redis:
+    enabled: ${APP_REDIS_ENABLED:true}

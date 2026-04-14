@@ -88,16 +88,16 @@ ON DUPLICATE KEY UPDATE `price` = VALUES(`price`);
 
 -- Initial scooter data (10 scooters)
 INSERT INTO `scooter` (`scooter_code`, `status`, `location`, `longitude`, `latitude`) VALUES
-    ('SC001', 'AVAILABLE', 'Campus North Gate', 113.323912, 23.097891),
-    ('SC002', 'AVAILABLE', 'Library Plaza', 113.324865, 23.098214),
-    ('SC003', 'AVAILABLE', 'Sports Center', 113.325742, 23.096845),
-    ('SC004', 'AVAILABLE', 'Student Dorm A', 113.322768, 23.095932),
-    ('SC005', 'AVAILABLE', 'Campus South Gate', 113.321954, 23.094821),
-    ('SC006', 'AVAILABLE', 'Cafeteria Square', 113.323247, 23.096374),
-    ('SC007', 'AVAILABLE', 'Teaching Building B', 113.326184, 23.097402),
-    ('SC008', 'AVAILABLE', 'Parking Lot P1', 113.327015, 23.095648),
-    ('SC009', 'AVAILABLE', 'Main Entrance', 113.320986, 23.098653),
-    ('SC010', 'AVAILABLE', 'Gymnasium', 113.325116, 23.094973)
+    ('SC001', 'AVAILABLE', 'Xipu Campus Library North Plaza', 103.981570, 30.768249),
+    ('SC002', 'AVAILABLE', 'Xipu Campus Library South Plaza', 103.981320, 30.767580),
+    ('SC003', 'AVAILABLE', 'Xipu Campus South Gate', 103.981110, 30.764820),
+    ('SC004', 'AVAILABLE', 'Xipu Campus East Gate', 103.985100, 30.768050),
+    ('SC005', 'AVAILABLE', 'Xipu Campus West Gate', 103.977850, 30.768200),
+    ('SC006', 'AVAILABLE', 'Xipu Campus Teaching Building 1', 103.982980, 30.769450),
+    ('SC007', 'AVAILABLE', 'Xipu Campus Teaching Building 4', 103.979920, 30.769180),
+    ('SC008', 'AVAILABLE', 'Xipu Campus Student Center', 103.983540, 30.766980),
+    ('SC009', 'AVAILABLE', 'Xipu Campus Dormitory Area A', 103.979180, 30.766540),
+    ('SC010', 'AVAILABLE', 'Xipu Campus Stadium', 103.984280, 30.770120)
 ON DUPLICATE KEY UPDATE
     `status` = VALUES(`status`),
     `location` = VALUES(`location`),
