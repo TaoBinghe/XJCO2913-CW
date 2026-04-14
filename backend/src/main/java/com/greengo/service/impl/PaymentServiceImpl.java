@@ -7,9 +7,14 @@ import com.greengo.domain.Scooter;
 import com.greengo.mapper.BookingMapper;
 import com.greengo.mapper.PaymentMapper;
 import com.greengo.mapper.ScooterMapper;
+import com.greengo.service.DistributedLockService;
 import com.greengo.service.PaymentService;
+import com.greengo.utils.RedisCacheNames;
+import com.greengo.utils.RedisKeys;
 import com.greengo.utils.ThreadLocalUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,14 +38,32 @@ public class PaymentServiceImpl implements PaymentService {
     @Autowired
     private ScooterMapper scooterMapper;
 
+    @Autowired
+    private DistributedLockService distributedLockService;
+
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = RedisCacheNames.SCOOTER_LIST, allEntries = true),
+            @CacheEvict(value = RedisCacheNames.ADMIN_WEEKLY_REVENUE, allEntries = true)
+    })
     public Payment pay(Long bookingId) {
-        // 1. Get current user from ThreadLocal (set by LoginInterceptor)
         Map<String, Object> claims = ThreadLocalUtil.get();
-        Long userId =((Number) claims.get("id")).longValue();
+        Long userId = ((Number) claims.get("id")).longValue();
 
-        // 2. Validate booking: must exist, belong to current user, and be in ACTIVE status
+        return distributedLockService.executeWithLock(RedisKeys.bookingLock(bookingId), () -> {
+            Booking booking = bookingMapper.selectById(bookingId);
+            if (booking == null) {
+                throw new IllegalArgumentException("Booking not found");
+            }
+            return distributedLockService.executeWithLock(
+                    RedisKeys.scooterLock(booking.getScooterId()),
+                    () -> doPay(bookingId, userId)
+            );
+        });
+    }
+
+    private Payment doPay(Long bookingId, Long userId) {
         Booking booking = bookingMapper.selectById(bookingId);
         if (booking == null) {
             throw new IllegalArgumentException("Booking not found");
@@ -52,7 +75,6 @@ public class PaymentServiceImpl implements PaymentService {
             throw new IllegalArgumentException("Booking status must be ACTIVE");
         }
 
-        // 3. Ensure this booking has not already been paid (one payment per booking)
         Long exist = paymentMapper.selectCount(
                 new QueryWrapper<Payment>().eq("booking_id", bookingId)
         );
@@ -60,22 +82,19 @@ public class PaymentServiceImpl implements PaymentService {
             throw new IllegalArgumentException("Already paid for this booking");
         }
 
-        // 4. Simulate payment: no password or real card check, just create a successful payment record
         Payment payment = new Payment();
         payment.setBookingId(bookingId);
         payment.setUserId(userId);
         payment.setAmount(booking.getTotalCost());
         payment.setStatus("SUCCESS");
-        payment.setCardLastFour(null);  // Simulated payment: no real card, so last four digits are null
+        payment.setCardLastFour(null);
         payment.setTransactionId("TXN-" + UUID.randomUUID().toString().replace("-", "").substring(0, 16));
         payment.setPaymentTime(LocalDateTime.now());
 
-        // 5. Persist payment record
         if (paymentMapper.insert(payment) <= 0) {
             throw new IllegalArgumentException("Failed to create payment");
         }
 
-        // 6. Complete the booking and release the scooter in the same transaction.
         if ("SUCCESS".equals(payment.getStatus())) {
             booking.setEndTime(LocalDateTime.now());
             booking.setStatus(BOOKING_STATUS_COMPLETED);
@@ -94,4 +113,3 @@ public class PaymentServiceImpl implements PaymentService {
         return payment;
     }
 }
-

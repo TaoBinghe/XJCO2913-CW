@@ -7,6 +7,10 @@ import com.greengo.mapper.BookingMapper;
 import com.greengo.mapper.PricingPlanMapper;
 import com.greengo.service.PricingPlanService;
 import com.greengo.utils.PricingPlanPeriodUtil;
+import com.greengo.utils.RedisCacheNames;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -23,16 +27,23 @@ public class PricingPlanServiceImpl implements PricingPlanService {
     private BookingMapper bookingMapper;
 
     @Override
+    @Cacheable(value = RedisCacheNames.PRICING_PLAN_LIST, key = "'all'")
     public List<PricingPlan> listAll() {
         return pricingPlanMapper.selectList(null);
     }
 
     @Override
+    @Cacheable(value = RedisCacheNames.PRICING_PLAN_BY_ID, key = "#id")
     public PricingPlan getById(Long id) {
         return pricingPlanMapper.selectById(id);
     }
 
     @Override
+    @Caching(evict = {
+            @CacheEvict(value = RedisCacheNames.PRICING_PLAN_LIST, allEntries = true),
+            @CacheEvict(value = RedisCacheNames.PRICING_PLAN_BY_ID, allEntries = true),
+            @CacheEvict(value = RedisCacheNames.ADMIN_WEEKLY_REVENUE, allEntries = true)
+    })
     public boolean create(PricingPlan plan) {
         if (plan == null) {
             return false;
@@ -57,6 +68,11 @@ public class PricingPlanServiceImpl implements PricingPlanService {
     }
 
     @Override
+    @Caching(evict = {
+            @CacheEvict(value = RedisCacheNames.PRICING_PLAN_LIST, allEntries = true),
+            @CacheEvict(value = RedisCacheNames.PRICING_PLAN_BY_ID, allEntries = true),
+            @CacheEvict(value = RedisCacheNames.ADMIN_WEEKLY_REVENUE, allEntries = true)
+    })
     public boolean update(Long id, PricingPlan plan) {
         if (id == null || plan == null) {
             return false;
@@ -88,6 +104,11 @@ public class PricingPlanServiceImpl implements PricingPlanService {
     }
 
     @Override
+    @Caching(evict = {
+            @CacheEvict(value = RedisCacheNames.PRICING_PLAN_LIST, allEntries = true),
+            @CacheEvict(value = RedisCacheNames.PRICING_PLAN_BY_ID, allEntries = true),
+            @CacheEvict(value = RedisCacheNames.ADMIN_WEEKLY_REVENUE, allEntries = true)
+    })
     public boolean delete(Long id) {
         if (id == null) {
             return false;

@@ -6,6 +6,9 @@ import com.greengo.domain.Scooter;
 import com.greengo.mapper.ScooterMapper;
 import com.greengo.service.GeoAddressService;
 import com.greengo.service.ScooterService;
+import com.greengo.utils.RedisCacheNames;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -15,17 +18,21 @@ import java.util.List;
 @Service
 public class ScooterServiceImpl extends ServiceImpl<ScooterMapper, Scooter> implements ScooterService {
 
+    private static final String SCOOTER_STATUS_AVAILABLE = "AVAILABLE";
+
     @Autowired
     private GeoAddressService geoAddressService;
 
     @Override
+    @Cacheable(value = RedisCacheNames.SCOOTER_LIST, key = "'all'")
     public List<Scooter> listAll() {
         List<Scooter> scooters = baseMapper.selectList(null);
-        scooters.forEach(this::hydrateLocationFromCoordinates);
+        scooters.forEach(this::hydrateLocationForRead);
         return scooters;
     }
 
     @Override
+    @CacheEvict(value = RedisCacheNames.SCOOTER_LIST, allEntries = true)
     public boolean addScooter(Scooter scooter) {
         if (scooter == null || scooter.getScooterCode() == null || scooter.getScooterCode().isBlank()) {
             return false;
@@ -42,7 +49,7 @@ public class ScooterServiceImpl extends ServiceImpl<ScooterMapper, Scooter> impl
         }
 
         if (scooter.getStatus() == null || scooter.getStatus().isBlank()) {
-            scooter.setStatus("AVAILABLE");
+            scooter.setStatus(SCOOTER_STATUS_AVAILABLE);
         }
         if (!hydrateLocationFromCoordinates(scooter)) {
             return false;
@@ -51,6 +58,7 @@ public class ScooterServiceImpl extends ServiceImpl<ScooterMapper, Scooter> impl
     }
 
     @Override
+    @CacheEvict(value = RedisCacheNames.SCOOTER_LIST, allEntries = true)
     public boolean updateScooter(Scooter scooter) {
         if (scooter == null || scooter.getId() == null) {
             return false;
@@ -96,26 +104,40 @@ public class ScooterServiceImpl extends ServiceImpl<ScooterMapper, Scooter> impl
     }
 
     @Override
+    @CacheEvict(value = RedisCacheNames.SCOOTER_LIST, allEntries = true)
     public boolean deleteScooter(Long id) {
         return baseMapper.deleteById(id) > 0;
     }
 
     private boolean hasValidCoordinates(Scooter scooter) {
-        if (scooter.getLongitude() == null || scooter.getLatitude() == null) {
+        return scooter != null && hasValidCoordinates(scooter.getLongitude(), scooter.getLatitude());
+    }
+
+    private boolean hasValidCoordinates(BigDecimal longitude, BigDecimal latitude) {
+        if (longitude == null || latitude == null) {
             return false;
         }
-        return isBetween(scooter.getLongitude(), new BigDecimal("-180"), new BigDecimal("180"))
-                && isBetween(scooter.getLatitude(), new BigDecimal("-90"), new BigDecimal("90"));
+        return isBetween(longitude, new BigDecimal("-180"), new BigDecimal("180"))
+                && isBetween(latitude, new BigDecimal("-90"), new BigDecimal("90"));
     }
 
     private boolean hydrateLocationFromCoordinates(Scooter scooter) {
         String resolvedLocation = geoAddressService.reverseGeocode(scooter.getLongitude(), scooter.getLatitude());
         if (resolvedLocation == null || resolvedLocation.isBlank()) {
-            scooter.setLocation(null);
             return false;
         }
         scooter.setLocation(resolvedLocation);
         return true;
+    }
+
+    private void hydrateLocationForRead(Scooter scooter) {
+        if (!hasValidCoordinates(scooter)) {
+            return;
+        }
+        String resolvedLocation = geoAddressService.reverseGeocode(scooter.getLongitude(), scooter.getLatitude());
+        if (resolvedLocation != null && !resolvedLocation.isBlank()) {
+            scooter.setLocation(resolvedLocation);
+        }
     }
 
     private boolean isBetween(BigDecimal value, BigDecimal min, BigDecimal max) {

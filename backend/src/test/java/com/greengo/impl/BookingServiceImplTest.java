@@ -7,6 +7,7 @@ import com.greengo.domain.Scooter;
 import com.greengo.mapper.BookingMapper;
 import com.greengo.mapper.PricingPlanMapper;
 import com.greengo.mapper.ScooterMapper;
+import com.greengo.service.DistributedLockService;
 import com.greengo.service.PaymentService;
 import com.greengo.utils.ThreadLocalUtil;
 import org.junit.jupiter.api.AfterEach;
@@ -20,13 +21,16 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.Map;
+import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -46,6 +50,8 @@ class BookingServiceImplTest {
     @Mock
     private ScooterMapper scooterMapper;
 
+    @Mock
+    private DistributedLockService distributedLockService;
 
     private com.greengo.service.impl.BookingServiceImpl bookingService;
 
@@ -55,8 +61,14 @@ class BookingServiceImplTest {
         ReflectionTestUtils.setField(bookingService, "pricingPlanMapper", pricingPlanMapper);
         ReflectionTestUtils.setField(bookingService, "paymentService", paymentService);
         ReflectionTestUtils.setField(bookingService, "scooterMapper", scooterMapper);
+        ReflectionTestUtils.setField(bookingService, "distributedLockService", distributedLockService);
         ReflectionTestUtils.setField(bookingService, "baseMapper", bookingMapper);
         ThreadLocalUtil.set(Map.of("id", 1L));
+
+        lenient().when(distributedLockService.executeWithLock(any(String.class), any()))
+                .thenAnswer(invocation -> ((Supplier<?>) invocation.getArgument(1)).get());
+        lenient().when(distributedLockService.executeWithLocks(any(Collection.class), any()))
+                .thenAnswer(invocation -> ((Supplier<?>) invocation.getArgument(1)).get());
     }
 
     @AfterEach

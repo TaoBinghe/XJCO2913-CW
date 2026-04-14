@@ -3,11 +3,11 @@ package com.greengo.controller;
 import com.greengo.domain.Booking;
 import com.greengo.domain.Result;
 import com.greengo.domain.User;
+import com.greengo.service.AuthSessionService;
 import com.greengo.service.BookingService;
 import com.greengo.service.UserService;
 import com.greengo.utils.JwtUtil;
 import com.greengo.utils.ThreadLocalUtil;
-import jakarta.validation.constraints.Pattern;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -31,6 +31,9 @@ public class UserController {
     @Autowired
     private BookingService bookingService;
 
+    @Autowired
+    private AuthSessionService authSessionService;
+
     // Register new user
     @PostMapping("/register")
     public Result<?> register(String username, String password) {
@@ -51,14 +54,29 @@ public class UserController {
         // Authenticate user in service layer
         User u = userService.login(username, password);
         if (u != null) {
+            if (u.getStatus() == null || u.getStatus() != 1) {
+                return Result.error("User is disabled");
+            }
             Map<String, Object> claims = new HashMap<>();
             claims.put("username", u.getUsername());
             claims.put("id", u.getId());
             claims.put("role", u.getRole());
+            claims.put("sid", authSessionService.createSession(u));
             String token = JwtUtil.genToken(claims);
             return Result.success(token);
         }
         return Result.error("Invalid username or password");
+    }
+
+    @PostMapping("/logout")
+    @SuppressWarnings("unchecked")
+    public Result<?> logout() {
+        Map<String, Object> claims = ThreadLocalUtil.get();
+        if (claims == null || claims.get("sid") == null) {
+            return Result.error("Unauthorized");
+        }
+        authSessionService.invalidateSession(claims.get("sid").toString());
+        return Result.success();
     }
 
     // Get current user's bookings

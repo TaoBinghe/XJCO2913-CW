@@ -1,6 +1,5 @@
 package com.greengo.service.impl;
 
-
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -12,17 +11,23 @@ import com.greengo.mapper.BookingMapper;
 import com.greengo.mapper.PricingPlanMapper;
 import com.greengo.mapper.ScooterMapper;
 import com.greengo.service.BookingService;
+import com.greengo.service.DistributedLockService;
 import com.greengo.service.PaymentService;
 import com.greengo.utils.PricingPlanPeriodUtil;
+import com.greengo.utils.RedisCacheNames;
+import com.greengo.utils.RedisKeys;
 import com.greengo.utils.ThreadLocalUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashMap;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Service
 public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> implements BookingService {
@@ -43,36 +48,111 @@ public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> impl
     @Autowired
     private ScooterMapper scooterMapper;
 
+    @Autowired
+    private DistributedLockService distributedLockService;
+
     @Override
+    @Cacheable(value = RedisCacheNames.PRICING_PLAN_LIST, key = "'all'")
     public List<PricingPlan> listPricingPlan() {
         return pricingPlanMapper.selectList(null);
     }
 
     @Override
     @Transactional
+    @CacheEvict(value = RedisCacheNames.SCOOTER_LIST, allEntries = true)
     public boolean bookScooter(Integer scooterId, String hiredPeriod) {
-        // 1. Get pricing plan by hire period
-        PricingPlan pricingPlan = findPricingPlanByHirePeriod(hiredPeriod);
+        Long userId = currentUserId();
+        return distributedLockService.executeWithLocks(
+                List.of(RedisKeys.userBookingLock(userId), RedisKeys.scooterLock(scooterId.longValue())),
+                () -> doBookScooter(userId, scooterId.longValue(), hiredPeriod)
+        );
+    }
 
-        // 2. Calculate booking start and end time based on hire period
+    @Override
+    @Transactional
+    public boolean activateBooking(Long bookingId) {
+        Long userId = currentUserId();
+        return distributedLockService.executeWithLocks(
+                List.of(RedisKeys.userBookingLock(userId), RedisKeys.bookingLock(bookingId)),
+                () -> doActivateBooking(bookingId)
+        );
+    }
+
+    @Override
+    @Transactional
+    public boolean updateBookingStatus(Long bookingId, String status) {
+        String targetStatus = normalizeLegacyBookingStatus(status);
+        if (BOOKING_STATUS_ACTIVE.equals(targetStatus)) {
+            return activateBooking(bookingId);
+        }
+        return distributedLockService.executeWithLock(
+                RedisKeys.bookingLock(bookingId),
+                () -> doUpdateBookingStatus(bookingId, targetStatus)
+        );
+    }
+
+    @Override
+    @Transactional
+    public Booking modifyBookingPeriod(Long bookingId, String hiredPeriod) {
+        return distributedLockService.executeWithLock(
+                RedisKeys.bookingLock(bookingId),
+                () -> doModifyBookingPeriod(bookingId, hiredPeriod)
+        );
+    }
+
+    @Override
+    @Transactional
+    @CacheEvict(value = RedisCacheNames.SCOOTER_LIST, allEntries = true)
+    public Booking cancelBooking(Long bookingId) {
+        return distributedLockService.executeWithLock(RedisKeys.bookingLock(bookingId), () -> {
+            Booking booking = getOwnedBooking(bookingId);
+            return distributedLockService.executeWithLock(
+                    RedisKeys.scooterLock(booking.getScooterId()),
+                    () -> doCancelBooking(booking)
+            );
+        });
+    }
+
+    @Override
+    @Transactional
+    public Booking renewBooking(Long bookingId, String hiredPeriod) {
+        return distributedLockService.executeWithLock(
+                RedisKeys.bookingLock(bookingId),
+                () -> doRenewBooking(bookingId, hiredPeriod)
+        );
+    }
+
+    @Override
+    public Map<String, Object> finishBooking(Long bookingId) {
+        Payment payment = paymentService.pay(bookingId);
+        Booking updatedBooking = baseMapper.selectById(bookingId);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("booking", updatedBooking);
+        result.put("payment", payment);
+        return result;
+    }
+
+    @Override
+    public List<Booking> listBookingsByUserId(Long userId) {
+        QueryWrapper<Booking> wrapper = new QueryWrapper<>();
+        wrapper.eq("user_id", userId).orderByDesc("created_at");
+        return baseMapper.selectList(wrapper);
+    }
+
+    private boolean doBookScooter(Long userId, Long scooterId, String hiredPeriod) {
+        PricingPlan pricingPlan = findPricingPlanByHirePeriod(hiredPeriod);
         LocalDateTime startTime = LocalDateTime.now();
         LocalDateTime endTime = calculateEndTime(startTime, pricingPlan);
 
-        // 3. Get current user id from ThreadLocal (set by LoginInterceptor)
-        Long userId = currentUserId();
-
-        // 4. One user can only have one open booking at a time.
         ensureNoOpenBooking(userId, null, "You already have an open booking");
-
-        // 5. The scooter must still be available when the booking is created.
-        assertScooterCanBeBooked(scooterId.longValue());
-        reserveScooter(scooterId.longValue());
+        assertScooterCanBeBooked(scooterId);
+        reserveScooter(scooterId);
         assertPricingPlanHasPrice(pricingPlan);
 
-        // 6. Create booking record with PENDING status (reserved, waiting for confirmation/payment)
         Booking booking = new Booking();
         booking.setUserId(userId);
-        booking.setScooterId(scooterId.longValue());
+        booking.setScooterId(scooterId);
         booking.setPricingPlanId(pricingPlan.getId());
         booking.setStartTime(startTime);
         booking.setEndTime(endTime);
@@ -85,16 +165,13 @@ public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> impl
         return true;
     }
 
-    @Override
-    @Transactional
-    public boolean activateBooking(Long bookingId) {
+    private boolean doActivateBooking(Long bookingId) {
         Booking booking = getOwnedBooking(bookingId);
         if (!BOOKING_STATUS_PENDING.equals(booking.getStatus())) {
             throw new IllegalArgumentException("Only pending bookings can be activated");
         }
 
         ensureNoOpenBooking(booking.getUserId(), bookingId, "You already have another open booking");
-
         booking.setStatus(BOOKING_STATUS_ACTIVE);
         if (baseMapper.updateById(booking) <= 0) {
             throw new IllegalArgumentException("Failed to activate booking");
@@ -102,16 +179,10 @@ public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> impl
         return true;
     }
 
-    @Override
-    @Transactional
-    public boolean updateBookingStatus(Long bookingId, String status) {
-        String targetStatus = normalizeLegacyBookingStatus(status);
+    private boolean doUpdateBookingStatus(Long bookingId, String targetStatus) {
         Booking booking = getOwnedBooking(bookingId);
         if (targetStatus.equals(booking.getStatus())) {
             return true;
-        }
-        if (BOOKING_STATUS_ACTIVE.equals(targetStatus)) {
-            return activateBooking(bookingId);
         }
         if (!BOOKING_STATUS_ACTIVE.equals(booking.getStatus())) {
             throw new IllegalArgumentException("Only active bookings can be switched back to pending");
@@ -124,9 +195,7 @@ public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> impl
         return true;
     }
 
-    @Override
-    @Transactional
-    public Booking modifyBookingPeriod(Long bookingId, String hiredPeriod) {
+    private Booking doModifyBookingPeriod(Long bookingId, String hiredPeriod) {
         Booking booking = getOwnedBooking(bookingId);
         if (!BOOKING_STATUS_PENDING.equals(booking.getStatus())) {
             throw new IllegalArgumentException("Only pending bookings can change hire period");
@@ -147,10 +216,7 @@ public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> impl
         return booking;
     }
 
-    @Override
-    @Transactional
-    public Booking cancelBooking(Long bookingId) {
-        Booking booking = getOwnedBooking(bookingId);
+    private Booking doCancelBooking(Booking booking) {
         if (BOOKING_STATUS_ACTIVE.equals(booking.getStatus())) {
             throw new IllegalArgumentException("Active bookings cannot be cancelled; finish the ride and pay instead");
         }
@@ -166,9 +232,7 @@ public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> impl
         return booking;
     }
 
-    @Override
-    @Transactional
-    public Booking renewBooking(Long bookingId, String hiredPeriod) {
+    private Booking doRenewBooking(Long bookingId, String hiredPeriod) {
         Booking booking = getOwnedBooking(bookingId);
         if (!BOOKING_STATUS_ACTIVE.equals(booking.getStatus())) {
             throw new IllegalArgumentException("Only active bookings can be renewed");
@@ -193,24 +257,6 @@ public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> impl
         return booking;
     }
 
-    @Override
-    public Map<String, Object> finishBooking(Long bookingId) {
-        Payment payment = paymentService.pay(bookingId);
-        Booking updatedBooking = baseMapper.selectById(bookingId);
-
-        Map<String, Object> result = new HashMap<>();
-        result.put("booking", updatedBooking);
-        result.put("payment", payment);
-        return result;
-    }
-
-    @Override
-    public List<Booking> listBookingsByUserId(Long userId) {
-        QueryWrapper<Booking> wrapper = new QueryWrapper<>();
-        wrapper.eq("user_id", userId).orderByDesc("created_at");
-        return baseMapper.selectList(wrapper);
-    }
-
     private Long currentUserId() {
         Map<String, Object> claims = ThreadLocalUtil.get();
         return ((Number) claims.get("id")).longValue();
@@ -222,7 +268,7 @@ public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> impl
         if (booking == null) {
             throw new IllegalArgumentException("Booking not found");
         }
-        if (!booking.getUserId().equals(userId)) {
+        if (!Objects.equals(booking.getUserId(), userId)) {
             throw new IllegalArgumentException("Not your booking");
         }
         return booking;
@@ -329,4 +375,3 @@ public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> impl
         }
     }
 }
-
