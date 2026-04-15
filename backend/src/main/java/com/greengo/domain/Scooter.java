@@ -1,5 +1,6 @@
 package com.greengo.domain;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -31,6 +32,13 @@ public class Scooter {
     /** Status: AVAILABLE / UNAVAILABLE */
     private String status;
 
+    private Long storeId;
+
+    private String rentalMode;
+
+    /** Lock status: LOCKED / UNLOCKED */
+    private String lockStatus;
+
     /** Location name for map display */
     private String location;
 
@@ -43,5 +51,11 @@ public class Scooter {
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;
+
+    @TableField(exist = false)
+    private String storeName;
+
+    @TableField(exist = false)
+    private String storeAddress;
 }
 

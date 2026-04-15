@@ -51,7 +51,7 @@ public class AdminScooterController {
         if (ok) {
             return Result.success();
         }
-        return Result.error("Failed to add scooter, code may already exist or coordinates/address is invalid");
+        return Result.error("Failed to add scooter, code may already exist or rental mode, store, coordinates, or status is invalid");
     }
 
     // Update scooter by id
@@ -64,7 +64,7 @@ public class AdminScooterController {
         if (ok) {
             return Result.success();
         }
-        return Result.error("Failed to update scooter, record not found, code duplicated, or coordinates/address is invalid");
+        return Result.error("Failed to update scooter, record not found, code duplicated, or rental mode, store, coordinates, or status is invalid");
     }
 
     // Delete scooter by id

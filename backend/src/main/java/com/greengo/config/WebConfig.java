@@ -19,7 +19,9 @@ public class WebConfig implements WebMvcConfigurer {
                 "/user/login",
                 "/user/register",
                 "/admin/login",
-                "/scooter/list"
+                "/scooter/list",
+                "/store/list",
+                "/store/*"
         );
     }
 

@@ -1,14 +1,20 @@
 package com.greengo.impl;
 
 import com.greengo.domain.Booking;
+import com.greengo.domain.BookingSettlementResult;
 import com.greengo.domain.Payment;
 import com.greengo.domain.PricingPlan;
 import com.greengo.domain.Scooter;
+import com.greengo.domain.Store;
 import com.greengo.mapper.BookingMapper;
 import com.greengo.mapper.PricingPlanMapper;
 import com.greengo.mapper.ScooterMapper;
+import com.greengo.mapper.StoreMapper;
 import com.greengo.service.DistributedLockService;
+import com.greengo.service.GeoAddressService;
 import com.greengo.service.PaymentService;
+import com.greengo.service.impl.BookingServiceImpl;
+import com.greengo.utils.RentalConstants;
 import com.greengo.utils.ThreadLocalUtil;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,9 +26,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -38,6 +49,15 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class BookingServiceImplTest {
 
+    private static final Long USER_ID = 1L;
+    private static final Long STORE_ID = 7L;
+    private static final Long BOOKING_ID = 10L;
+    private static final Long SCOOTER_ID = 3L;
+    private static final Clock FIXED_CLOCK = Clock.fixed(
+            Instant.parse("2026-04-15T02:00:00Z"),
+            ZoneId.of("Asia/Shanghai")
+    );
+
     @Mock
     private BookingMapper bookingMapper;
 
@@ -51,24 +71,39 @@ class BookingServiceImplTest {
     private ScooterMapper scooterMapper;
 
     @Mock
+    private StoreMapper storeMapper;
+
+    @Mock
+    private GeoAddressService geoAddressService;
+
+    @Mock
     private DistributedLockService distributedLockService;
 
-    private com.greengo.service.impl.BookingServiceImpl bookingService;
+    private BookingServiceImpl bookingService;
 
     @BeforeEach
     void setUp() {
-        bookingService = new com.greengo.service.impl.BookingServiceImpl();
+        bookingService = new BookingServiceImpl();
         ReflectionTestUtils.setField(bookingService, "pricingPlanMapper", pricingPlanMapper);
         ReflectionTestUtils.setField(bookingService, "paymentService", paymentService);
         ReflectionTestUtils.setField(bookingService, "scooterMapper", scooterMapper);
+        ReflectionTestUtils.setField(bookingService, "storeMapper", storeMapper);
+        ReflectionTestUtils.setField(bookingService, "geoAddressService", geoAddressService);
         ReflectionTestUtils.setField(bookingService, "distributedLockService", distributedLockService);
         ReflectionTestUtils.setField(bookingService, "baseMapper", bookingMapper);
-        ThreadLocalUtil.set(Map.of("id", 1L));
+        ReflectionTestUtils.setField(bookingService, "clock", FIXED_CLOCK);
+        ThreadLocalUtil.set(Map.of("id", USER_ID));
 
-        lenient().when(distributedLockService.executeWithLock(any(String.class), any()))
+        lenient().when(distributedLockService.executeWithLock(any(String.class), org.mockito.ArgumentMatchers.<Supplier<?>>any()))
                 .thenAnswer(invocation -> ((Supplier<?>) invocation.getArgument(1)).get());
-        lenient().when(distributedLockService.executeWithLocks(any(Collection.class), any()))
+        lenient().when(distributedLockService.executeWithLocks(
+                        org.mockito.ArgumentMatchers.<Collection<String>>any(),
+                        org.mockito.ArgumentMatchers.<Supplier<?>>any()))
                 .thenAnswer(invocation -> ((Supplier<?>) invocation.getArgument(1)).get());
+
+        lenient().when(storeMapper.selectBatchIds(any())).thenReturn(List.of());
+        lenient().when(scooterMapper.selectBatchIds(any())).thenReturn(List.of());
+        lenient().when(pricingPlanMapper.selectBatchIds(any())).thenReturn(List.of());
     }
 
     @AfterEach
@@ -77,402 +112,414 @@ class BookingServiceImplTest {
     }
 
     @Test
-    void activateBookingMarksPendingBookingAsActive() {
-        Booking booking = Booking.builder()
-                .id(10L)
-                .userId(1L)
-                .status("PENDING")
-                .build();
-        when(bookingMapper.selectById(10L)).thenReturn(booking);
-        when(bookingMapper.selectCount(any())).thenReturn(0L);
-        when(bookingMapper.updateById(booking)).thenReturn(1);
+    void createStoreBookingCreatesReservedBookingForStoreInventory() {
+        Store store = enabledStore();
+        PricingPlan dayPlan = pricingPlan(2L, "DAY_1", "30.00");
+        LocalDateTime appointmentStart = LocalDateTime.of(2026, 4, 16, 10, 0);
+        AtomicReference<Booking> storedBooking = new AtomicReference<>();
 
-        boolean activated = bookingService.activateBooking(10L);
-
-        assertTrue(activated);
-        assertEquals("ACTIVE", booking.getStatus());
-        verify(bookingMapper).updateById(booking);
-    }
-
-    @Test
-    void activateBookingRejectsWhenUserHasAnotherOpenBooking() {
-        Booking booking = Booking.builder()
-                .id(10L)
-                .userId(1L)
-                .status("PENDING")
-                .build();
-        when(bookingMapper.selectById(10L)).thenReturn(booking);
-        when(bookingMapper.selectCount(any())).thenReturn(1L);
-
-        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
-                () -> bookingService.activateBooking(10L));
-
-        assertEquals("You already have another open booking", error.getMessage());
-        verify(bookingMapper, never()).updateById(booking);
-    }
-
-    @Test
-    void updateBookingStatusMapsActivatedToActive() {
-        Booking booking = Booking.builder()
-                .id(10L)
-                .userId(1L)
-                .status("PENDING")
-                .build();
-        when(bookingMapper.selectById(10L)).thenReturn(booking, booking);
-        when(bookingMapper.selectCount(any())).thenReturn(0L);
-        when(bookingMapper.updateById(booking)).thenReturn(1);
-
-        boolean updated = bookingService.updateBookingStatus(10L, "ACTIVATED");
-
-        assertTrue(updated);
-        assertEquals("ACTIVE", booking.getStatus());
-        verify(bookingMapper).updateById(booking);
-    }
-
-    @Test
-    void updateBookingStatusSwitchesActiveBookingBackToPending() {
-        Booking booking = Booking.builder()
-                .id(10L)
-                .userId(1L)
-                .status("ACTIVE")
-                .build();
-        when(bookingMapper.selectById(10L)).thenReturn(booking);
-        when(bookingMapper.updateById(booking)).thenReturn(1);
-
-        boolean updated = bookingService.updateBookingStatus(10L, "PENDING");
-
-        assertTrue(updated);
-        assertEquals("PENDING", booking.getStatus());
-        verify(bookingMapper).updateById(booking);
-    }
-
-    @Test
-    void modifyBookingPeriodUpdatesPendingBookingWithNewPlan() {
-        LocalDateTime startTime = LocalDateTime.now();
-        Booking booking = Booking.builder()
-                .id(10L)
-                .userId(1L)
-                .pricingPlanId(2L)
-                .startTime(startTime)
-                .endTime(startTime.plusHours(1))
-                .totalCost(new BigDecimal("5.00"))
-                .status("PENDING")
-                .build();
-        PricingPlan newPlan = PricingPlan.builder()
-                .id(3L)
-                .hirePeriod("DAY_1")
-                .price(new BigDecimal("30.00"))
-                .build();
-        when(bookingMapper.selectById(10L)).thenReturn(booking);
-        when(pricingPlanMapper.selectOne(any())).thenReturn(newPlan);
-        when(bookingMapper.updateById(booking)).thenReturn(1);
-
-        Booking updated = bookingService.modifyBookingPeriod(10L, "DAY_1");
-
-        assertEquals(3L, updated.getPricingPlanId());
-        assertEquals(startTime.plusDays(1), updated.getEndTime());
-        assertEquals(new BigDecimal("30.00"), updated.getTotalCost());
-        assertEquals("PENDING", updated.getStatus());
-        verify(bookingMapper).updateById(booking);
-    }
-
-    @Test
-    void modifyBookingPeriodSupportsCustomPlanDurations() {
-        LocalDateTime startTime = LocalDateTime.of(2026, 4, 12, 9, 0);
-        Booking booking = Booking.builder()
-                .id(10L)
-                .userId(1L)
-                .pricingPlanId(2L)
-                .startTime(startTime)
-                .endTime(startTime.plusHours(1))
-                .totalCost(new BigDecimal("5.00"))
-                .status("PENDING")
-                .build();
-        PricingPlan newPlan = PricingPlan.builder()
-                .id(5L)
-                .hirePeriod("DAY_3")
-                .price(new BigDecimal("66.00"))
-                .build();
-        when(bookingMapper.selectById(10L)).thenReturn(booking);
-        when(pricingPlanMapper.selectOne(any())).thenReturn(newPlan);
-        when(bookingMapper.updateById(booking)).thenReturn(1);
-
-        Booking updated = bookingService.modifyBookingPeriod(10L, "day_3");
-
-        assertEquals(5L, updated.getPricingPlanId());
-        assertEquals(startTime.plusDays(3), updated.getEndTime());
-        assertEquals(new BigDecimal("66.00"), updated.getTotalCost());
-        verify(bookingMapper).updateById(booking);
-    }
-
-    @Test
-    void modifyBookingPeriodRejectsActiveBooking() {
-        Booking booking = Booking.builder()
-                .id(10L)
-                .userId(1L)
-                .status("ACTIVE")
-                .build();
-        when(bookingMapper.selectById(10L)).thenReturn(booking);
-
-        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
-                () -> bookingService.modifyBookingPeriod(10L, "HOUR_4"));
-
-        assertEquals("Only pending bookings can change hire period", error.getMessage());
-        verify(bookingMapper, never()).updateById(booking);
-    }
-
-    @Test
-    void modifyBookingPeriodRejectsBookingOwnedByAnotherUser() {
-        Booking booking = Booking.builder()
-                .id(10L)
-                .userId(2L)
-                .status("PENDING")
-                .build();
-        when(bookingMapper.selectById(10L)).thenReturn(booking);
-
-        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
-                () -> bookingService.modifyBookingPeriod(10L, "HOUR_4"));
-
-        assertEquals("Not your booking", error.getMessage());
-        verify(bookingMapper, never()).updateById(any(Booking.class));
-    }
-
-    @Test
-    void bookScooterRejectsWhenCurrentUserAlreadyHasOpenBooking() {
-        PricingPlan plan = PricingPlan.builder()
-                .id(2L)
-                .hirePeriod("HOUR_1")
-                .price(new BigDecimal("5.00"))
-                .build();
-        when(pricingPlanMapper.selectOne(any())).thenReturn(plan);
-        when(bookingMapper.selectCount(any())).thenReturn(1L);
-
-        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
-                () -> bookingService.bookScooter(1, "HOUR_1"));
-
-        assertEquals("You already have an open booking", error.getMessage());
-        verify(scooterMapper, never()).selectById(1L);
-        verify(bookingMapper, never()).insert(any(Booking.class));
-    }
-
-    @Test
-    void bookScooterRejectsUnavailableScooter() {
-        PricingPlan plan = PricingPlan.builder()
-                .id(2L)
-                .hirePeriod("HOUR_4")
-                .price(new BigDecimal("15.00"))
-                .build();
-        Scooter scooter = Scooter.builder()
-                .id(1L)
-                .status("UNAVAILABLE")
-                .build();
-        when(pricingPlanMapper.selectOne(any())).thenReturn(plan);
-        when(bookingMapper.selectCount(any())).thenReturn(0L);
-        when(scooterMapper.selectById(1L)).thenReturn(scooter);
-
-        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
-                () -> bookingService.bookScooter(1, "HOUR_4"));
-
-        assertEquals("Scooter is not available", error.getMessage());
-        verify(bookingMapper, never()).insert(any(Booking.class));
-    }
-
-    @Test
-    void bookScooterReservesAvailableScooterAndCreatesPendingBooking() {
-        PricingPlan plan = PricingPlan.builder()
-                .id(2L)
-                .hirePeriod("DAY_1")
-                .price(new BigDecimal("30.00"))
-                .build();
-        Scooter scooter = Scooter.builder()
-                .id(1L)
-                .status("AVAILABLE")
-                .build();
-        when(pricingPlanMapper.selectOne(any())).thenReturn(plan);
+        when(storeMapper.selectById(STORE_ID)).thenReturn(store);
+        when(storeMapper.selectBatchIds(any())).thenReturn(List.of(store));
+        when(pricingPlanMapper.selectOne(any())).thenReturn(dayPlan);
+        when(pricingPlanMapper.selectBatchIds(any())).thenReturn(List.of(dayPlan));
+        when(scooterMapper.selectCount(any())).thenReturn(3L);
         when(bookingMapper.selectCount(any())).thenReturn(0L, 0L);
-        when(scooterMapper.selectById(1L)).thenReturn(scooter);
-        when(scooterMapper.update(any(), any())).thenReturn(1);
-        when(bookingMapper.insert(any(Booking.class))).thenReturn(1);
+        when(bookingMapper.insert(any(Booking.class))).thenAnswer(invocation -> {
+            Booking booking = invocation.getArgument(0);
+            booking.setId(BOOKING_ID);
+            storedBooking.set(booking);
+            return 1;
+        });
+        when(bookingMapper.selectById(BOOKING_ID)).thenAnswer(invocation -> storedBooking.get());
 
-        boolean created = bookingService.bookScooter(1, "DAY_1");
+        Booking booking = bookingService.createStoreBooking(STORE_ID, appointmentStart, "DAY_1");
 
         ArgumentCaptor<Booking> bookingCaptor = ArgumentCaptor.forClass(Booking.class);
         verify(bookingMapper).insert(bookingCaptor.capture());
-        assertTrue(created);
-        assertEquals(1L, bookingCaptor.getValue().getUserId());
-        assertEquals(1L, bookingCaptor.getValue().getScooterId());
-        assertEquals(2L, bookingCaptor.getValue().getPricingPlanId());
+        assertEquals(RentalConstants.BOOKING_STATUS_RESERVED, bookingCaptor.getValue().getStatus());
+        assertEquals(RentalConstants.RENTAL_TYPE_STORE_PICKUP, bookingCaptor.getValue().getRentalType());
+        assertEquals(appointmentStart.plusDays(1), bookingCaptor.getValue().getEndTime());
+        assertEquals(appointmentStart.plusMinutes(30), bookingCaptor.getValue().getPickupDeadline());
         assertEquals(new BigDecimal("30.00"), bookingCaptor.getValue().getTotalCost());
-        assertEquals("PENDING", bookingCaptor.getValue().getStatus());
-        assertNotNull(bookingCaptor.getValue().getStartTime());
-        assertTrue(bookingCaptor.getValue().getEndTime().isAfter(bookingCaptor.getValue().getStartTime()));
-        verify(scooterMapper).update(any(), any());
+        assertEquals(STORE_ID, booking.getStoreId());
+        assertEquals("Xipu North Hub", booking.getStoreName());
+        assertEquals("DAY_1", booking.getHirePeriod());
     }
 
     @Test
-    void cancelBookingCancelsPendingBookingOwnedByCurrentUserAndReleasesScooter() {
-        Booking booking = Booking.builder()
-                .id(10L)
-                .userId(1L)
-                .scooterId(5L)
-                .status("PENDING")
-                .build();
-        when(bookingMapper.selectById(10L)).thenReturn(booking);
-        when(bookingMapper.updateById(booking)).thenReturn(1);
-        when(scooterMapper.updateById(any(Scooter.class))).thenReturn(1);
+    void createStoreBookingRejectsWhenStoreInventoryIsFullyBooked() {
+        Store store = enabledStore();
+        PricingPlan dayPlan = pricingPlan(2L, "DAY_1", "30.00");
+        LocalDateTime appointmentStart = LocalDateTime.of(2026, 4, 16, 10, 0);
 
-        Booking cancelled = bookingService.cancelBooking(10L);
-
-        ArgumentCaptor<Scooter> scooterCaptor = ArgumentCaptor.forClass(Scooter.class);
-        assertEquals("CANCELLED", cancelled.getStatus());
-        verify(bookingMapper).updateById(booking);
-        verify(scooterMapper).updateById(scooterCaptor.capture());
-        assertEquals(5L, scooterCaptor.getValue().getId());
-        assertEquals("AVAILABLE", scooterCaptor.getValue().getStatus());
-    }
-
-    @Test
-    void cancelBookingRejectsActiveBooking() {
-        Booking booking = Booking.builder()
-                .id(10L)
-                .userId(1L)
-                .status("ACTIVE")
-                .build();
-        when(bookingMapper.selectById(10L)).thenReturn(booking);
+        when(storeMapper.selectById(STORE_ID)).thenReturn(store);
+        when(pricingPlanMapper.selectOne(any())).thenReturn(dayPlan);
+        when(scooterMapper.selectCount(any())).thenReturn(2L);
+        when(bookingMapper.selectCount(any())).thenReturn(0L, 2L);
 
         IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
-                () -> bookingService.cancelBooking(10L));
+                () -> bookingService.createStoreBooking(STORE_ID, appointmentStart, "DAY_1"));
 
-        assertEquals("Active bookings cannot be cancelled; finish the ride and pay instead", error.getMessage());
-        verify(bookingMapper, never()).updateById(booking);
+        assertEquals("Store inventory is fully booked for the selected time", error.getMessage());
+        verify(bookingMapper, never()).insert(any(Booking.class));
     }
 
     @Test
-    void renewBookingExtendsActiveBookingAndKeepsOriginalPlan() {
-        LocalDateTime originalEndTime = LocalDateTime.now().plusHours(4);
-        Booking booking = Booking.builder()
-                .id(10L)
-                .userId(1L)
-                .pricingPlanId(2L)
-                .endTime(originalEndTime)
-                .totalCost(new BigDecimal("15.00"))
-                .status("ACTIVE")
-                .build();
-        PricingPlan renewalPlan = PricingPlan.builder()
-                .id(4L)
-                .hirePeriod("HOUR_1")
-                .price(new BigDecimal("5.00"))
-                .build();
-        when(bookingMapper.selectById(10L)).thenReturn(booking);
-        when(pricingPlanMapper.selectOne(any())).thenReturn(renewalPlan);
+    void cancelStoreBookingMarksReservedBookingCancelled() {
+        Store store = enabledStore();
+        PricingPlan dayPlan = pricingPlan(2L, "DAY_1", "30.00");
+        Booking booking = reservedBooking();
+
+        when(bookingMapper.selectById(BOOKING_ID)).thenReturn(booking);
+        when(bookingMapper.updateById(booking)).thenReturn(1);
+        when(storeMapper.selectBatchIds(any())).thenReturn(List.of(store));
+        when(pricingPlanMapper.selectBatchIds(any())).thenReturn(List.of(dayPlan));
+
+        Booking cancelled = bookingService.cancelStoreBooking(BOOKING_ID);
+
+        assertEquals(RentalConstants.BOOKING_STATUS_CANCELLED, cancelled.getStatus());
+        verify(bookingMapper).updateById(booking);
+    }
+
+    @Test
+    void startScanRideCreatesInProgressBookingAndUnlocksScooter() {
+        Scooter scooter = scanRideScooter();
+        PricingPlan minutePlan = pricingPlan(9L, "MINUTE_1", "1.00");
+        AtomicReference<Booking> storedBooking = new AtomicReference<>();
+
         when(bookingMapper.selectCount(any())).thenReturn(0L);
-        when(bookingMapper.updateById(booking)).thenReturn(1);
+        when(scooterMapper.selectOne(any())).thenReturn(scooter);
+        when(bookingMapper.insert(any(Booking.class))).thenAnswer(invocation -> {
+            Booking booking = invocation.getArgument(0);
+            booking.setId(BOOKING_ID);
+            storedBooking.set(booking);
+            return 1;
+        });
+        when(bookingMapper.selectById(BOOKING_ID)).thenAnswer(invocation -> storedBooking.get());
+        when(pricingPlanMapper.selectOne(any())).thenReturn(minutePlan);
+        when(pricingPlanMapper.selectBatchIds(any())).thenReturn(List.of(minutePlan));
+        when(scooterMapper.updateById(scooter)).thenReturn(1);
+        when(scooterMapper.selectBatchIds(any())).thenReturn(List.of(scooter));
 
-        Booking updated = bookingService.renewBooking(10L, "HOUR_1");
+        Booking booking = bookingService.startScanRide("SC201");
 
-        assertEquals(2L, updated.getPricingPlanId());
-        assertEquals(originalEndTime.plusHours(1), updated.getEndTime());
-        assertEquals(new BigDecimal("20.00"), updated.getTotalCost());
-        assertEquals("ACTIVE", updated.getStatus());
-        verify(bookingMapper).updateById(booking);
+        assertEquals(RentalConstants.RENTAL_TYPE_SCAN_RIDE, booking.getRentalType());
+        assertEquals(RentalConstants.BOOKING_STATUS_IN_PROGRESS, booking.getStatus());
+        assertEquals(SCOOTER_ID, booking.getScooterId());
+        assertEquals(BigDecimal.ZERO, booking.getTotalCost());
+        assertEquals(RentalConstants.SCOOTER_STATUS_IN_USE, scooter.getStatus());
+        assertEquals(RentalConstants.SCOOTER_LOCK_STATUS_UNLOCKED, scooter.getLockStatus());
+        assertEquals("MINUTE_1", booking.getHirePeriod());
+        assertEquals("SC201", booking.getScooterCode());
     }
 
     @Test
-    void renewBookingRejectsWhenExtendedPeriodOverlapsAnotherOpenBooking() {
-        Booking booking = Booking.builder()
-                .id(10L)
-                .userId(1L)
-                .scooterId(3L)
-                .endTime(LocalDateTime.now().plusHours(4))
-                .totalCost(new BigDecimal("15.00"))
-                .status("ACTIVE")
-                .build();
-        PricingPlan renewalPlan = PricingPlan.builder()
+    void listPickupScootersReturnsAvailableScootersForStore() {
+        Booking booking = reservedBooking();
+        Store store = enabledStore();
+        Scooter scooterA = availableScooter();
+        Scooter scooterB = Scooter.builder()
                 .id(4L)
-                .hirePeriod("HOUR_4")
-                .price(new BigDecimal("15.00"))
+                .scooterCode("SC004")
+                .storeId(STORE_ID)
+                .rentalMode(RentalConstants.RENTAL_TYPE_STORE_PICKUP)
+                .status(RentalConstants.SCOOTER_STATUS_AVAILABLE)
+                .lockStatus(RentalConstants.SCOOTER_LOCK_STATUS_LOCKED)
                 .build();
-        when(bookingMapper.selectById(10L)).thenReturn(booking);
-        when(pricingPlanMapper.selectOne(any())).thenReturn(renewalPlan);
-        when(bookingMapper.selectCount(any())).thenReturn(1L);
 
-        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
-                () -> bookingService.renewBooking(10L, "HOUR_4"));
+        when(bookingMapper.selectById(BOOKING_ID)).thenReturn(booking);
+        when(scooterMapper.selectList(any())).thenReturn(List.of(scooterA, scooterB));
+        when(storeMapper.selectBatchIds(any())).thenReturn(List.of(store));
 
-        assertEquals("Scooter is not available for the extended period", error.getMessage());
-        verify(bookingMapper, never()).updateById(any(Booking.class));
+        List<Scooter> scooters = bookingService.listPickupScooters(BOOKING_ID);
+
+        assertEquals(2, scooters.size());
+        assertEquals("Xipu North Hub", scooters.get(0).getStoreName());
+        assertEquals(store.getAddress(), scooters.get(0).getLocation());
     }
 
     @Test
-    void renewBookingRejectsPendingBooking() {
-        Booking booking = Booking.builder()
-                .id(10L)
-                .userId(1L)
-                .status("PENDING")
-                .build();
-        when(bookingMapper.selectById(10L)).thenReturn(booking);
+    void pickupBookingBindsSelectedScooterAndMarksBookingInProgress() {
+        Booking booking = reservedBooking();
+        PricingPlan dayPlan = pricingPlan(2L, "DAY_1", "30.00");
+        Store store = enabledStore();
+        Scooter scooter = availableScooter();
 
-        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
-                () -> bookingService.renewBooking(10L, "HOUR_1"));
+        when(bookingMapper.selectById(BOOKING_ID)).thenReturn(booking);
+        when(scooterMapper.selectById(SCOOTER_ID)).thenReturn(scooter);
+        when(bookingMapper.updateById(booking)).thenReturn(1);
+        when(scooterMapper.updateById(scooter)).thenReturn(1);
+        when(storeMapper.selectBatchIds(any())).thenReturn(List.of(store));
+        when(scooterMapper.selectBatchIds(any())).thenReturn(List.of(scooter));
+        when(pricingPlanMapper.selectBatchIds(any())).thenReturn(List.of(dayPlan));
 
-        assertEquals("Only active bookings can be renewed", error.getMessage());
-        verify(bookingMapper, never()).updateById(booking);
+        Booking picked = bookingService.pickupBooking(BOOKING_ID, SCOOTER_ID);
+
+        assertEquals(RentalConstants.BOOKING_STATUS_IN_PROGRESS, booking.getStatus());
+        assertEquals(SCOOTER_ID, booking.getScooterId());
+        assertNotNull(booking.getPickupTime());
+        assertEquals(RentalConstants.SCOOTER_STATUS_IN_USE, scooter.getStatus());
+        assertEquals(RentalConstants.SCOOTER_LOCK_STATUS_UNLOCKED, scooter.getLockStatus());
+        assertEquals("SC003", picked.getScooterCode());
+        assertEquals(RentalConstants.SCOOTER_LOCK_STATUS_UNLOCKED, picked.getLockStatus());
     }
 
     @Test
-    void renewBookingRejectsUnknownPricingPlan() {
-        Booking booking = Booking.builder()
-                .id(10L)
-                .userId(1L)
-                .endTime(LocalDateTime.now().plusHours(1))
-                .totalCost(new BigDecimal("5.00"))
-                .status("ACTIVE")
-                .build();
-        when(bookingMapper.selectById(10L)).thenReturn(booking);
+    void pickupBookingRejectsBeforeAppointmentStart() {
+        Booking booking = reservedBooking();
+        booking.setStartTime(LocalDateTime.of(2026, 4, 15, 11, 0));
+        booking.setPickupDeadline(LocalDateTime.of(2026, 4, 15, 11, 30));
+
+        when(bookingMapper.selectById(BOOKING_ID)).thenReturn(booking);
 
         IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
-                () -> bookingService.renewBooking(10L, "UNKNOWN"));
+                () -> bookingService.pickupBooking(BOOKING_ID, SCOOTER_ID));
 
-        assertEquals("Pricing plan not found", error.getMessage());
-        verify(bookingMapper, never()).updateById(any(Booking.class));
+        assertEquals("Pickup is not open yet", error.getMessage());
+        verify(scooterMapper, never()).selectById(any());
     }
 
     @Test
-    void finishBookingReturnsUpdatedBookingAndPayment() {
-        Booking completedBooking = Booking.builder()
-                .id(10L)
-                .userId(1L)
-                .status("COMPLETED")
-                .endTime(LocalDateTime.now())
+    void lockScooterUpdatesCurrentScooterLockState() {
+        Booking booking = inProgressBooking();
+        PricingPlan dayPlan = pricingPlan(2L, "DAY_1", "30.00");
+        Store store = enabledStore();
+        Scooter scooter = Scooter.builder()
+                .id(SCOOTER_ID)
+                .scooterCode("SC003")
+                .storeId(STORE_ID)
+                .rentalMode(RentalConstants.RENTAL_TYPE_STORE_PICKUP)
+                .status(RentalConstants.SCOOTER_STATUS_IN_USE)
+                .lockStatus(RentalConstants.SCOOTER_LOCK_STATUS_UNLOCKED)
+                .build();
+
+        when(bookingMapper.selectById(BOOKING_ID)).thenReturn(booking);
+        when(scooterMapper.selectById(SCOOTER_ID)).thenReturn(scooter);
+        when(scooterMapper.updateById(scooter)).thenReturn(1);
+        when(storeMapper.selectBatchIds(any())).thenReturn(List.of(store));
+        when(scooterMapper.selectBatchIds(any())).thenReturn(List.of(scooter));
+        when(pricingPlanMapper.selectBatchIds(any())).thenReturn(List.of(dayPlan));
+
+        Booking locked = bookingService.lockScooter(BOOKING_ID);
+
+        assertEquals(RentalConstants.SCOOTER_LOCK_STATUS_LOCKED, scooter.getLockStatus());
+        assertEquals(RentalConstants.SCOOTER_LOCK_STATUS_LOCKED, locked.getLockStatus());
+    }
+
+    @Test
+    void returnBookingCalculatesRoundedOverdueCostAndCompletesPayment() {
+        Booking booking = inProgressBooking();
+        PricingPlan bookingPlan = pricingPlan(2L, "DAY_1", "30.00");
+        PricingPlan hourlyPlan = pricingPlan(1L, "HOUR_1", "5.00");
+        Store store = enabledStore();
+        Scooter scooter = Scooter.builder()
+                .id(SCOOTER_ID)
+                .scooterCode("SC003")
+                .storeId(STORE_ID)
+                .rentalMode(RentalConstants.RENTAL_TYPE_STORE_PICKUP)
+                .status(RentalConstants.SCOOTER_STATUS_IN_USE)
+                .lockStatus(RentalConstants.SCOOTER_LOCK_STATUS_UNLOCKED)
                 .build();
         Payment payment = Payment.builder()
-                .bookingId(10L)
-                .userId(1L)
-                .amount(new BigDecimal("15.00"))
+                .bookingId(BOOKING_ID)
+                .userId(USER_ID)
+                .amount(new BigDecimal("35.00"))
                 .status("SUCCESS")
-                .transactionId("TXN-1234567890")
-                .paymentTime(LocalDateTime.now())
+                .transactionId("TXN-RETURN-001")
+                .paymentTime(LocalDateTime.of(2026, 4, 15, 10, 0))
                 .build();
 
-        when(bookingMapper.selectById(10L)).thenReturn(completedBooking);
-        when(paymentService.pay(10L)).thenReturn(payment);
+        booking.setEndTime(LocalDateTime.of(2026, 4, 15, 9, 50));
 
-        Map<String, Object> result = bookingService.finishBooking(10L);
+        when(bookingMapper.selectById(BOOKING_ID)).thenReturn(booking);
+        when(scooterMapper.selectById(SCOOTER_ID)).thenReturn(scooter);
+        when(storeMapper.selectById(STORE_ID)).thenReturn(store);
+        when(pricingPlanMapper.selectOne(any())).thenReturn(hourlyPlan);
+        when(bookingMapper.updateById(booking)).thenReturn(1);
+        when(scooterMapper.updateById(scooter)).thenReturn(1);
+        when(storeMapper.selectBatchIds(any())).thenReturn(List.of(store));
+        when(scooterMapper.selectBatchIds(any())).thenReturn(List.of(scooter));
+        when(pricingPlanMapper.selectBatchIds(any())).thenReturn(List.of(bookingPlan));
+        when(paymentService.pay(BOOKING_ID)).thenAnswer(invocation -> {
+            booking.setStatus(RentalConstants.BOOKING_STATUS_COMPLETED);
+            return payment;
+        });
 
-        verify(paymentService).pay(10L);
-        assertEquals(completedBooking, result.get("booking"));
-        assertEquals(payment, result.get("payment"));
+        BookingSettlementResult result = bookingService.returnBooking(BOOKING_ID);
+
+        assertEquals(new BigDecimal("5.00"), booking.getOverdueCost());
+        assertEquals(new BigDecimal("35.00"), booking.getTotalCost());
+        assertNotNull(booking.getReturnTime());
+        assertEquals(RentalConstants.BOOKING_STATUS_COMPLETED, result.getBooking().getStatus());
+        assertEquals(RentalConstants.SCOOTER_STATUS_AVAILABLE, scooter.getStatus());
+        assertEquals(RentalConstants.SCOOTER_LOCK_STATUS_LOCKED, scooter.getLockStatus());
+        assertEquals(payment, result.getPayment());
     }
 
     @Test
-    void finishBookingPropagatesPaymentErrors() {
-        when(paymentService.pay(10L)).thenThrow(new IllegalArgumentException("Not your booking"));
+    void returnScanRideCalculatesRoundedMinuteCostAndUpdatesScooterLocation() {
+        Booking booking = scanRideBooking();
+        PricingPlan minutePlan = pricingPlan(9L, "MINUTE_1", "1.00");
+        Scooter scooter = scanRideScooterInUse();
+        Payment payment = Payment.builder()
+                .bookingId(BOOKING_ID)
+                .userId(USER_ID)
+                .amount(new BigDecimal("4.00"))
+                .status("SUCCESS")
+                .transactionId("TXN-SCAN-001")
+                .paymentTime(LocalDateTime.of(2026, 4, 15, 10, 0))
+                .build();
 
-        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
-                () -> bookingService.finishBooking(10L));
+        when(bookingMapper.selectById(BOOKING_ID)).thenReturn(booking);
+        when(pricingPlanMapper.selectOne(any())).thenReturn(minutePlan);
+        when(scooterMapper.selectById(SCOOTER_ID)).thenReturn(scooter);
+        when(bookingMapper.updateById(booking)).thenReturn(1);
+        when(scooterMapper.updateById(scooter)).thenReturn(1);
+        when(scooterMapper.selectBatchIds(any())).thenReturn(List.of(scooter));
+        when(pricingPlanMapper.selectBatchIds(any())).thenReturn(List.of(minutePlan));
+        when(geoAddressService.reverseGeocode(new BigDecimal("103.985000"), new BigDecimal("30.769000")))
+                .thenReturn("Xipu Return Point");
+        when(paymentService.pay(BOOKING_ID)).thenAnswer(invocation -> {
+            booking.setStatus(RentalConstants.BOOKING_STATUS_COMPLETED);
+            return payment;
+        });
 
-        assertEquals("Not your booking", error.getMessage());
-        verify(paymentService).pay(10L);
+        BookingSettlementResult result = bookingService.returnScanRide(
+                BOOKING_ID,
+                new BigDecimal("103.985000"),
+                new BigDecimal("30.769000")
+        );
+
+        assertEquals(new BigDecimal("4.00"), booking.getTotalCost());
+        assertEquals(BigDecimal.ZERO, booking.getOverdueCost());
+        assertEquals("Xipu Return Point", booking.getReturnLocation());
+        assertEquals(RentalConstants.BOOKING_STATUS_COMPLETED, result.getBooking().getStatus());
+        assertEquals(RentalConstants.SCOOTER_STATUS_AVAILABLE, scooter.getStatus());
+        assertEquals(RentalConstants.SCOOTER_LOCK_STATUS_LOCKED, scooter.getLockStatus());
+        assertEquals(new BigDecimal("103.985000"), scooter.getLongitude());
+        assertEquals(new BigDecimal("30.769000"), scooter.getLatitude());
+        assertEquals(payment, result.getPayment());
+    }
+
+    @Test
+    void expireReservationsMarksPastDeadlineBookingsAsNoShow() {
+        Booking booking = reservedBooking();
+        booking.setPickupDeadline(LocalDateTime.of(2026, 4, 15, 9, 0));
+
+        when(bookingMapper.selectList(any())).thenReturn(List.of(Booking.builder().id(BOOKING_ID).build()));
+        when(bookingMapper.selectById(BOOKING_ID)).thenReturn(booking);
+        when(bookingMapper.updateById(booking)).thenReturn(1);
+
+        int expired = bookingService.expireReservations();
+
+        assertEquals(1, expired);
+        assertEquals(RentalConstants.BOOKING_STATUS_NO_SHOW_CANCELLED, booking.getStatus());
+    }
+
+    @Test
+    void markOverdueBookingsUpdatesInProgressBookingsPastPlannedEnd() {
+        Booking booking = inProgressBooking();
+        booking.setEndTime(LocalDateTime.of(2026, 4, 15, 9, 0));
+
+        when(bookingMapper.selectList(any())).thenReturn(List.of(Booking.builder().id(BOOKING_ID).build()));
+        when(bookingMapper.selectById(BOOKING_ID)).thenReturn(booking);
+        when(bookingMapper.updateById(booking)).thenReturn(1);
+
+        int overdue = bookingService.markOverdueBookings();
+
+        assertEquals(1, overdue);
+        assertEquals(RentalConstants.BOOKING_STATUS_OVERDUE, booking.getStatus());
+    }
+
+    private Store enabledStore() {
+        return Store.builder()
+                .id(STORE_ID)
+                .name("Xipu North Hub")
+                .address("Xipu Campus Library North Plaza")
+                .longitude(new BigDecimal("103.981570"))
+                .latitude(new BigDecimal("30.768249"))
+                .status(RentalConstants.STORE_STATUS_ENABLED)
+                .build();
+    }
+
+    private PricingPlan pricingPlan(Long id, String hirePeriod, String price) {
+        return PricingPlan.builder()
+                .id(id)
+                .hirePeriod(hirePeriod)
+                .price(new BigDecimal(price))
+                .build();
+    }
+
+    private Booking reservedBooking() {
+        return Booking.builder()
+                .id(BOOKING_ID)
+                .userId(USER_ID)
+                .storeId(STORE_ID)
+                .pricingPlanId(2L)
+                .rentalType(RentalConstants.RENTAL_TYPE_STORE_PICKUP)
+                .startTime(LocalDateTime.of(2026, 4, 15, 9, 0))
+                .endTime(LocalDateTime.of(2026, 4, 16, 9, 0))
+                .pickupDeadline(LocalDateTime.of(2026, 4, 15, 10, 30))
+                .totalCost(new BigDecimal("30.00"))
+                .overdueCost(BigDecimal.ZERO)
+                .status(RentalConstants.BOOKING_STATUS_RESERVED)
+                .build();
+    }
+
+    private Booking inProgressBooking() {
+        Booking booking = reservedBooking();
+        booking.setScooterId(SCOOTER_ID);
+        booking.setPickupTime(LocalDateTime.of(2026, 4, 15, 9, 10));
+        booking.setStatus(RentalConstants.BOOKING_STATUS_IN_PROGRESS);
+        return booking;
+    }
+
+    private Scooter availableScooter() {
+        return Scooter.builder()
+                .id(SCOOTER_ID)
+                .scooterCode("SC003")
+                .storeId(STORE_ID)
+                .rentalMode(RentalConstants.RENTAL_TYPE_STORE_PICKUP)
+                .status(RentalConstants.SCOOTER_STATUS_AVAILABLE)
+                .lockStatus(RentalConstants.SCOOTER_LOCK_STATUS_LOCKED)
+                .build();
+    }
+
+    private Booking scanRideBooking() {
+        return Booking.builder()
+                .id(BOOKING_ID)
+                .userId(USER_ID)
+                .scooterId(SCOOTER_ID)
+                .pricingPlanId(9L)
+                .rentalType(RentalConstants.RENTAL_TYPE_SCAN_RIDE)
+                .startTime(LocalDateTime.of(2026, 4, 15, 9, 56))
+                .pickupTime(LocalDateTime.of(2026, 4, 15, 9, 56))
+                .pickupLocation("Xipu East Roadside")
+                .pickupLongitude(new BigDecimal("103.982120"))
+                .pickupLatitude(new BigDecimal("30.767320"))
+                .totalCost(BigDecimal.ZERO)
+                .overdueCost(BigDecimal.ZERO)
+                .status(RentalConstants.BOOKING_STATUS_IN_PROGRESS)
+                .build();
+    }
+
+    private Scooter scanRideScooter() {
+        return Scooter.builder()
+                .id(SCOOTER_ID)
+                .scooterCode("SC201")
+                .rentalMode(RentalConstants.RENTAL_TYPE_SCAN_RIDE)
+                .status(RentalConstants.SCOOTER_STATUS_AVAILABLE)
+                .lockStatus(RentalConstants.SCOOTER_LOCK_STATUS_LOCKED)
+                .location("Xipu East Roadside")
+                .longitude(new BigDecimal("103.982120"))
+                .latitude(new BigDecimal("30.767320"))
+                .build();
+    }
+
+    private Scooter scanRideScooterInUse() {
+        Scooter scooter = scanRideScooter();
+        scooter.setStatus(RentalConstants.SCOOTER_STATUS_IN_USE);
+        scooter.setLockStatus(RentalConstants.SCOOTER_LOCK_STATUS_UNLOCKED);
+        return scooter;
     }
 }
-

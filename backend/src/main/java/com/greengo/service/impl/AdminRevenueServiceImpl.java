@@ -30,6 +30,7 @@ public class AdminRevenueServiceImpl implements AdminRevenueService {
     @Autowired
     private PricingPlanMapper pricingPlanMapper;
 
+    @Autowired
     private Clock clock = Clock.systemDefaultZone();
 
     @Override

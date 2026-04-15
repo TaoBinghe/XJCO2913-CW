@@ -26,7 +26,7 @@ public class ScooterController {
 
     @GetMapping("/list")
     public Result<List<Scooter>> list() {
-        return Result.success(scooterService.listAll());
+        return Result.success(scooterService.listMapScooters());
     }
 
     @GetMapping("/route")

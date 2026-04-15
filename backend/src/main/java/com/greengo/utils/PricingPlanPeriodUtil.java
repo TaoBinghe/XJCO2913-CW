@@ -38,6 +38,16 @@ public final class PricingPlanPeriodUtil {
         return normalizeHirePeriod(hirePeriod) != null;
     }
 
+    public static boolean isMinuteHirePeriod(String hirePeriod) {
+        ParsedHirePeriod parsed = parse(hirePeriod);
+        return parsed != null && "MINUTE".equals(parsed.unit());
+    }
+
+    public static boolean isReservationHirePeriod(String hirePeriod) {
+        ParsedHirePeriod parsed = parse(hirePeriod);
+        return parsed != null && !"MINUTE".equals(parsed.unit());
+    }
+
     public static LocalDateTime addPeriod(LocalDateTime baseTime, String hirePeriod) {
         if (baseTime == null) {
             throw new IllegalArgumentException("Booking time is missing");
@@ -88,6 +98,10 @@ public final class PricingPlanPeriodUtil {
     }
 
     public static String formatHint() {
+        return "Hire period must use UNIT_NUMBER format like MINUTE_1, HOUR_2, DAY_3, WEEK_2, or MONTH_1";
+    }
+
+    public static String reservationFormatHint() {
         return "Hire period must use UNIT_NUMBER format like HOUR_2, DAY_3, WEEK_2, or MONTH_1";
     }
 

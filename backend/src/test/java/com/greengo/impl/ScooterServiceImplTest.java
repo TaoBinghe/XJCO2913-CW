@@ -1,9 +1,12 @@
 package com.greengo.impl;
 
 import com.greengo.domain.Scooter;
+import com.greengo.domain.Store;
+import com.greengo.mapper.BookingMapper;
 import com.greengo.mapper.ScooterMapper;
-import com.greengo.service.GeoAddressService;
+import com.greengo.mapper.StoreMapper;
 import com.greengo.service.impl.ScooterServiceImpl;
+import com.greengo.utils.RentalConstants;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -13,6 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -27,8 +31,12 @@ class ScooterServiceImplTest {
 
     @Mock
     private ScooterMapper scooterMapper;
+
     @Mock
-    private GeoAddressService geoAddressService;
+    private StoreMapper storeMapper;
+
+    @Mock
+    private BookingMapper bookingMapper;
 
     private ScooterServiceImpl scooterService;
 
@@ -36,15 +44,15 @@ class ScooterServiceImplTest {
     void setUp() {
         scooterService = new ScooterServiceImpl();
         ReflectionTestUtils.setField(scooterService, "baseMapper", scooterMapper);
-        ReflectionTestUtils.setField(scooterService, "geoAddressService", geoAddressService);
+        ReflectionTestUtils.setField(scooterService, "storeMapper", storeMapper);
+        ReflectionTestUtils.setField(scooterService, "bookingMapper", bookingMapper);
     }
 
     @Test
-    void addScooterRejectsMissingCoordinates() {
+    void addScooterRejectsUnknownStore() {
         Scooter scooter = Scooter.builder()
                 .scooterCode("SC011")
-                .status("AVAILABLE")
-                .location("Campus West Gate")
+                .storeId(99L)
                 .build();
 
         boolean saved = scooterService.addScooter(scooter);
@@ -54,17 +62,16 @@ class ScooterServiceImplTest {
     }
 
     @Test
-    void addScooterStoresValidCoordinates() {
+    void addScooterStoresSelectedStoreSnapshotAndDefaultStates() {
         Scooter scooter = Scooter.builder()
                 .scooterCode("SC011")
-                .status("AVAILABLE")
-                .location("Campus West Gate")
-                .longitude(new BigDecimal("113.320001"))
-                .latitude(new BigDecimal("23.099001"))
+                .storeId(7L)
+                .rentalMode(RentalConstants.RENTAL_TYPE_STORE_PICKUP)
                 .build();
+        Store store = store();
+
         when(scooterMapper.selectCount(any())).thenReturn(0L);
-        when(geoAddressService.reverseGeocode(new BigDecimal("113.320001"), new BigDecimal("23.099001")))
-                .thenReturn("Generated Campus West Gate");
+        when(storeMapper.selectById(7L)).thenReturn(store);
         when(scooterMapper.insert(any(Scooter.class))).thenReturn(1);
 
         boolean saved = scooterService.addScooter(scooter);
@@ -72,26 +79,53 @@ class ScooterServiceImplTest {
         ArgumentCaptor<Scooter> scooterCaptor = ArgumentCaptor.forClass(Scooter.class);
         assertTrue(saved);
         verify(scooterMapper).insert(scooterCaptor.capture());
-        assertEquals("Generated Campus West Gate", scooterCaptor.getValue().getLocation());
-        assertEquals(new BigDecimal("113.320001"), scooterCaptor.getValue().getLongitude());
-        assertEquals(new BigDecimal("23.099001"), scooterCaptor.getValue().getLatitude());
+        assertEquals(RentalConstants.SCOOTER_STATUS_AVAILABLE, scooterCaptor.getValue().getStatus());
+        assertEquals(RentalConstants.SCOOTER_LOCK_STATUS_LOCKED, scooterCaptor.getValue().getLockStatus());
+        assertEquals(store.getAddress(), scooterCaptor.getValue().getLocation());
+        assertEquals(store.getLongitude(), scooterCaptor.getValue().getLongitude());
+        assertEquals(store.getLatitude(), scooterCaptor.getValue().getLatitude());
     }
 
     @Test
-    void updateScooterRejectsOutOfRangeCoordinates() {
+    void addScanRideScooterStoresCurrentCoordinatesWithoutStore() {
+        Scooter scooter = Scooter.builder()
+                .scooterCode("SC201")
+                .rentalMode(RentalConstants.RENTAL_TYPE_SCAN_RIDE)
+                .location("Xipu East Roadside")
+                .longitude(new BigDecimal("103.982120"))
+                .latitude(new BigDecimal("30.767320"))
+                .build();
+
+        when(scooterMapper.selectCount(any())).thenReturn(0L);
+        when(scooterMapper.insert(any(Scooter.class))).thenReturn(1);
+
+        boolean saved = scooterService.addScooter(scooter);
+
+        ArgumentCaptor<Scooter> scooterCaptor = ArgumentCaptor.forClass(Scooter.class);
+        assertTrue(saved);
+        verify(scooterMapper).insert(scooterCaptor.capture());
+        assertEquals(RentalConstants.RENTAL_TYPE_SCAN_RIDE, scooterCaptor.getValue().getRentalMode());
+        assertEquals(new BigDecimal("103.982120"), scooterCaptor.getValue().getLongitude());
+        assertEquals(new BigDecimal("30.767320"), scooterCaptor.getValue().getLatitude());
+        assertEquals("Xipu East Roadside", scooterCaptor.getValue().getLocation());
+        assertEquals(null, scooterCaptor.getValue().getStoreId());
+    }
+
+    @Test
+    void updateScooterRejectsChangingStoreWhileScooterIsInUse() {
         Scooter existing = Scooter.builder()
                 .id(1L)
                 .scooterCode("SC001")
-                .status("AVAILABLE")
-                .location("Campus North Gate")
-                .longitude(new BigDecimal("113.323912"))
-                .latitude(new BigDecimal("23.097891"))
+                .storeId(7L)
+                .rentalMode(RentalConstants.RENTAL_TYPE_STORE_PICKUP)
+                .status(RentalConstants.SCOOTER_STATUS_IN_USE)
+                .lockStatus(RentalConstants.SCOOTER_LOCK_STATUS_UNLOCKED)
                 .build();
         Scooter update = Scooter.builder()
                 .id(1L)
-                .longitude(new BigDecimal("181"))
-                .latitude(new BigDecimal("23.000001"))
+                .storeId(8L)
                 .build();
+
         when(scooterMapper.selectById(1L)).thenReturn(existing);
 
         boolean updated = scooterService.updateScooter(update);
@@ -101,23 +135,36 @@ class ScooterServiceImplTest {
     }
 
     @Test
-    void listAllUsesResolvedAddressFromCoordinates() {
-        Scooter existing = Scooter.builder()
+    void listAllEnrichesScootersWithStoreInfo() {
+        Scooter scooter = Scooter.builder()
                 .id(1L)
                 .scooterCode("SC001")
-                .status("AVAILABLE")
-                .location("Old hard coded address")
-                .longitude(new BigDecimal("113.323912"))
-                .latitude(new BigDecimal("23.097891"))
+                .storeId(7L)
+                .rentalMode(RentalConstants.RENTAL_TYPE_STORE_PICKUP)
+                .status(RentalConstants.SCOOTER_STATUS_AVAILABLE)
+                .lockStatus(RentalConstants.SCOOTER_LOCK_STATUS_LOCKED)
+                .location("Old address")
                 .build();
-        when(scooterMapper.selectList(null)).thenReturn(java.util.List.of(existing));
-        when(geoAddressService.reverseGeocode(new BigDecimal("113.323912"), new BigDecimal("23.097891")))
-                .thenReturn("Resolved Campus North Gate");
+        Store store = store();
 
-        java.util.List<Scooter> scooters = scooterService.listAll();
+        when(scooterMapper.selectList(any())).thenReturn(List.of(scooter));
+        when(storeMapper.selectBatchIds(any())).thenReturn(List.of(store));
+
+        List<Scooter> scooters = scooterService.listAll();
 
         assertEquals(1, scooters.size());
-        assertEquals("Resolved Campus North Gate", scooters.get(0).getLocation());
+        assertEquals(store.getName(), scooters.get(0).getStoreName());
+        assertEquals(store.getAddress(), scooters.get(0).getLocation());
+    }
+
+    private Store store() {
+        return Store.builder()
+                .id(7L)
+                .name("Xipu North Hub")
+                .address("Xipu Campus Library North Plaza")
+                .longitude(new BigDecimal("103.981570"))
+                .latitude(new BigDecimal("30.768249"))
+                .status(RentalConstants.STORE_STATUS_ENABLED)
+                .build();
     }
 }
-
