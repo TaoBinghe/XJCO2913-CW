@@ -1,7 +1,29 @@
 <script>
+const DEFAULT_WX_CLOUD_ENV_ID = 'prod-4g7i1ww2f71d4f7b'
+const WX_CLOUD_ENV_ID = (import.meta.env.VITE_WX_CLOUD_ENV_ID || DEFAULT_WX_CLOUD_ENV_ID).trim()
+
 export default {
   onLaunch() {
     console.log('App Launch')
+
+    // #ifdef MP-WEIXIN
+    if (!WX_CLOUD_ENV_ID) {
+      console.error('VITE_WX_CLOUD_ENV_ID is not configured for mp-weixin')
+      uni.showToast({ title: 'Cloud env not configured', icon: 'none' })
+      return
+    }
+
+    if (!wx.cloud) {
+      console.error('wx.cloud is unavailable. Please use a WeChat base library that supports cloud capabilities.')
+      uni.showToast({ title: 'wx.cloud unavailable', icon: 'none' })
+      return
+    }
+
+    wx.cloud.init({
+      env: WX_CLOUD_ENV_ID
+    })
+    console.log(`wx.cloud initialized with env ${WX_CLOUD_ENV_ID}`)
+    // #endif
   },
   onShow() {
     console.log('App Show')

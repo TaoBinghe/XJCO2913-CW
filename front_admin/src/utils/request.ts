@@ -2,6 +2,7 @@ import axios from 'axios'
 import type { AxiosInstance, AxiosRequestConfig } from 'axios'
 import { ElMessage } from 'element-plus'
 import { getToken, removeToken } from './auth'
+import { getAdminUiUrl } from './appBase'
 
 export interface ApiResponse<T> {
   code: number
@@ -19,8 +20,16 @@ interface RequestInstance extends AxiosInstance {
   patch<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T>
 }
 
+function getApiBaseUrl(): string {
+  if (import.meta.env.DEV) {
+    return ''
+  }
+
+  return (import.meta.env.VITE_ADMIN_API_BASE_URL || '').trim()
+}
+
 const service = axios.create({
-  baseURL: '/api',
+  baseURL: getApiBaseUrl(),
   timeout: 15000
 }) as RequestInstance
 
@@ -48,7 +57,7 @@ service.interceptors.response.use(
     if (error.response && error.response.status === 401) {
       removeToken()
       ElMessage.error('Session expired, please login again')
-      window.location.href = '/login'
+      window.location.replace(getAdminUiUrl('login'))
     } else {
       ElMessage.error(error.message || 'Network error')
     }

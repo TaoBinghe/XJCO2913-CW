@@ -3,6 +3,10 @@
 </template>
 
 <style>
+:root {
+  --admin-ui-build: '2026-04-15-2049';
+}
+
 * {
   margin: 0;
   padding: 0;
