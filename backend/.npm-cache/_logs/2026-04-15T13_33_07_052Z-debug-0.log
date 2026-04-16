@@ -1,0 +1,265 @@
+0 verbose cli C:\Users\ASUS\Desktop\wechat\front_admin\node\node.exe C:\Users\ASUS\Desktop\wechat\front_admin\node\node_modules\npm\bin\npm-cli.js
+1 info using npm@10.8.2
+2 info using node@v20.19.0
+3 silly config load:file:C:\Users\ASUS\Desktop\wechat\front_admin\node\node_modules\npm\npmrc
+4 silly config load:file:C:\Users\ASUS\Desktop\wechat\front_admin\.npmrc
+5 silly config load:file:C:\Users\ASUS\.npmrc
+6 silly config load:file:C:\Users\ASUS\Desktop\wechat\front_admin\node\etc\npmrc
+7 verbose title npm ci
+8 verbose argv "ci"
+9 verbose logfile logs-max:10 dir:C:\Users\ASUS\Desktop\wechat\backend\.npm-cache\_logs\2026-04-15T13_33_07_052Z-
+10 verbose logfile C:\Users\ASUS\Desktop\wechat\backend\.npm-cache\_logs\2026-04-15T13_33_07_052Z-debug-0.log
+11 silly packumentCache heap:4345298944 maxSize:1086324736 maxEntrySize:543162368
+12 silly logfile start cleaning logs, removing 1 files
+13 silly logfile done cleaning log files
+14 silly idealTree buildDeps
+15 silly reify moves {}
+16 silly audit report null
+17 verbose reify failed optional dependency C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\fsevents
+18 silly reify mark deleted [
+18 silly reify   'C:\\Users\\ASUS\\Desktop\\wechat\\front_admin\\node_modules\\fsevents'
+18 silly reify ]
+19 verbose reify failed optional dependency C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\@rollup\rollup-win32-ia32-msvc
+20 silly reify mark deleted [
+20 silly reify   'C:\\Users\\ASUS\\Desktop\\wechat\\front_admin\\node_modules\\@rollup\\rollup-win32-ia32-msvc'
+20 silly reify ]
+21 verbose reify failed optional dependency C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\@rollup\rollup-win32-arm64-msvc
+22 silly reify mark deleted [
+22 silly reify   'C:\\Users\\ASUS\\Desktop\\wechat\\front_admin\\node_modules\\@rollup\\rollup-win32-arm64-msvc'
+22 silly reify ]
+23 verbose reify failed optional dependency C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\@rollup\rollup-openharmony-arm64
+24 silly reify mark deleted [
+24 silly reify   'C:\\Users\\ASUS\\Desktop\\wechat\\front_admin\\node_modules\\@rollup\\rollup-openharmony-arm64'
+24 silly reify ]
+25 verbose reify failed optional dependency C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\@rollup\rollup-openbsd-x64
+26 silly reify mark deleted [
+26 silly reify   'C:\\Users\\ASUS\\Desktop\\wechat\\front_admin\\node_modules\\@rollup\\rollup-openbsd-x64'
+26 silly reify ]
+27 verbose reify failed optional dependency C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\@rollup\rollup-linux-x64-musl
+28 silly reify mark deleted [
+28 silly reify   'C:\\Users\\ASUS\\Desktop\\wechat\\front_admin\\node_modules\\@rollup\\rollup-linux-x64-musl'
+28 silly reify ]
+29 verbose reify failed optional dependency C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\@rollup\rollup-linux-x64-gnu
+30 silly reify mark deleted [
+30 silly reify   'C:\\Users\\ASUS\\Desktop\\wechat\\front_admin\\node_modules\\@rollup\\rollup-linux-x64-gnu'
+30 silly reify ]
+31 verbose reify failed optional dependency C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\@rollup\rollup-linux-s390x-gnu
+32 silly reify mark deleted [
+32 silly reify   'C:\\Users\\ASUS\\Desktop\\wechat\\front_admin\\node_modules\\@rollup\\rollup-linux-s390x-gnu'
+32 silly reify ]
+33 verbose reify failed optional dependency C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\@rollup\rollup-linux-riscv64-musl
+34 silly reify mark deleted [
+34 silly reify   'C:\\Users\\ASUS\\Desktop\\wechat\\front_admin\\node_modules\\@rollup\\rollup-linux-riscv64-musl'
+34 silly reify ]
+35 verbose reify failed optional dependency C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\@rollup\rollup-linux-riscv64-gnu
+36 silly reify mark deleted [
+36 silly reify   'C:\\Users\\ASUS\\Desktop\\wechat\\front_admin\\node_modules\\@rollup\\rollup-linux-riscv64-gnu'
+36 silly reify ]
+37 verbose reify failed optional dependency C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\@rollup\rollup-linux-ppc64-musl
+38 silly reify mark deleted [
+38 silly reify   'C:\\Users\\ASUS\\Desktop\\wechat\\front_admin\\node_modules\\@rollup\\rollup-linux-ppc64-musl'
+38 silly reify ]
+39 verbose reify failed optional dependency C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\@rollup\rollup-linux-ppc64-gnu
+40 silly reify mark deleted [
+40 silly reify   'C:\\Users\\ASUS\\Desktop\\wechat\\front_admin\\node_modules\\@rollup\\rollup-linux-ppc64-gnu'
+40 silly reify ]
+41 verbose reify failed optional dependency C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\@rollup\rollup-linux-loong64-musl
+42 silly reify mark deleted [
+42 silly reify   'C:\\Users\\ASUS\\Desktop\\wechat\\front_admin\\node_modules\\@rollup\\rollup-linux-loong64-musl'
+42 silly reify ]
+43 verbose reify failed optional dependency C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\@rollup\rollup-linux-loong64-gnu
+44 silly reify mark deleted [
+44 silly reify   'C:\\Users\\ASUS\\Desktop\\wechat\\front_admin\\node_modules\\@rollup\\rollup-linux-loong64-gnu'
+44 silly reify ]
+45 verbose reify failed optional dependency C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\@rollup\rollup-linux-arm64-musl
+46 silly reify mark deleted [
+46 silly reify   'C:\\Users\\ASUS\\Desktop\\wechat\\front_admin\\node_modules\\@rollup\\rollup-linux-arm64-musl'
+46 silly reify ]
+47 verbose reify failed optional dependency C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\@rollup\rollup-linux-arm64-gnu
+48 silly reify mark deleted [
+48 silly reify   'C:\\Users\\ASUS\\Desktop\\wechat\\front_admin\\node_modules\\@rollup\\rollup-linux-arm64-gnu'
+48 silly reify ]
+49 verbose reify failed optional dependency C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\@rollup\rollup-linux-arm-musleabihf
+50 silly reify mark deleted [
+50 silly reify   'C:\\Users\\ASUS\\Desktop\\wechat\\front_admin\\node_modules\\@rollup\\rollup-linux-arm-musleabihf'
+50 silly reify ]
+51 verbose reify failed optional dependency C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\@rollup\rollup-linux-arm-gnueabihf
+52 silly reify mark deleted [
+52 silly reify   'C:\\Users\\ASUS\\Desktop\\wechat\\front_admin\\node_modules\\@rollup\\rollup-linux-arm-gnueabihf'
+52 silly reify ]
+53 verbose reify failed optional dependency C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\@rollup\rollup-freebsd-x64
+54 silly reify mark deleted [
+54 silly reify   'C:\\Users\\ASUS\\Desktop\\wechat\\front_admin\\node_modules\\@rollup\\rollup-freebsd-x64'
+54 silly reify ]
+55 verbose reify failed optional dependency C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\@rollup\rollup-freebsd-arm64
+56 silly reify mark deleted [
+56 silly reify   'C:\\Users\\ASUS\\Desktop\\wechat\\front_admin\\node_modules\\@rollup\\rollup-freebsd-arm64'
+56 silly reify ]
+57 verbose reify failed optional dependency C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\@rollup\rollup-darwin-x64
+58 silly reify mark deleted [
+58 silly reify   'C:\\Users\\ASUS\\Desktop\\wechat\\front_admin\\node_modules\\@rollup\\rollup-darwin-x64'
+58 silly reify ]
+59 verbose reify failed optional dependency C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\@rollup\rollup-darwin-arm64
+60 silly reify mark deleted [
+60 silly reify   'C:\\Users\\ASUS\\Desktop\\wechat\\front_admin\\node_modules\\@rollup\\rollup-darwin-arm64'
+60 silly reify ]
+61 verbose reify failed optional dependency C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\@rollup\rollup-android-arm64
+62 silly reify mark deleted [
+62 silly reify   'C:\\Users\\ASUS\\Desktop\\wechat\\front_admin\\node_modules\\@rollup\\rollup-android-arm64'
+62 silly reify ]
+63 verbose reify failed optional dependency C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\@rollup\rollup-android-arm-eabi
+64 silly reify mark deleted [
+64 silly reify   'C:\\Users\\ASUS\\Desktop\\wechat\\front_admin\\node_modules\\@rollup\\rollup-android-arm-eabi'
+64 silly reify ]
+65 verbose reify failed optional dependency C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\@esbuild\win32-ia32
+66 silly reify mark deleted [
+66 silly reify   'C:\\Users\\ASUS\\Desktop\\wechat\\front_admin\\node_modules\\@esbuild\\win32-ia32'
+66 silly reify ]
+67 verbose reify failed optional dependency C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\@esbuild\win32-arm64
+68 silly reify mark deleted [
+68 silly reify   'C:\\Users\\ASUS\\Desktop\\wechat\\front_admin\\node_modules\\@esbuild\\win32-arm64'
+68 silly reify ]
+69 verbose reify failed optional dependency C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\@esbuild\sunos-x64
+70 silly reify mark deleted [
+70 silly reify   'C:\\Users\\ASUS\\Desktop\\wechat\\front_admin\\node_modules\\@esbuild\\sunos-x64'
+70 silly reify ]
+71 verbose reify failed optional dependency C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\@esbuild\openharmony-arm64
+72 silly reify mark deleted [
+72 silly reify   'C:\\Users\\ASUS\\Desktop\\wechat\\front_admin\\node_modules\\@esbuild\\openharmony-arm64'
+72 silly reify ]
+73 verbose reify failed optional dependency C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\@esbuild\openbsd-x64
+74 silly reify mark deleted [
+74 silly reify   'C:\\Users\\ASUS\\Desktop\\wechat\\front_admin\\node_modules\\@esbuild\\openbsd-x64'
+74 silly reify ]
+75 verbose reify failed optional dependency C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\@esbuild\openbsd-arm64
+76 silly reify mark deleted [
+76 silly reify   'C:\\Users\\ASUS\\Desktop\\wechat\\front_admin\\node_modules\\@esbuild\\openbsd-arm64'
+76 silly reify ]
+77 verbose reify failed optional dependency C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\@esbuild\netbsd-x64
+78 silly reify mark deleted [
+78 silly reify   'C:\\Users\\ASUS\\Desktop\\wechat\\front_admin\\node_modules\\@esbuild\\netbsd-x64'
+78 silly reify ]
+79 verbose reify failed optional dependency C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\@esbuild\netbsd-arm64
+80 silly reify mark deleted [
+80 silly reify   'C:\\Users\\ASUS\\Desktop\\wechat\\front_admin\\node_modules\\@esbuild\\netbsd-arm64'
+80 silly reify ]
+81 verbose reify failed optional dependency C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\@esbuild\linux-x64
+82 silly reify mark deleted [
+82 silly reify   'C:\\Users\\ASUS\\Desktop\\wechat\\front_admin\\node_modules\\@esbuild\\linux-x64'
+82 silly reify ]
+83 verbose reify failed optional dependency C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\@esbuild\linux-s390x
+84 silly reify mark deleted [
+84 silly reify   'C:\\Users\\ASUS\\Desktop\\wechat\\front_admin\\node_modules\\@esbuild\\linux-s390x'
+84 silly reify ]
+85 verbose reify failed optional dependency C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\@esbuild\linux-riscv64
+86 silly reify mark deleted [
+86 silly reify   'C:\\Users\\ASUS\\Desktop\\wechat\\front_admin\\node_modules\\@esbuild\\linux-riscv64'
+86 silly reify ]
+87 verbose reify failed optional dependency C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\@esbuild\linux-ppc64
+88 silly reify mark deleted [
+88 silly reify   'C:\\Users\\ASUS\\Desktop\\wechat\\front_admin\\node_modules\\@esbuild\\linux-ppc64'
+88 silly reify ]
+89 verbose reify failed optional dependency C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\@esbuild\linux-mips64el
+90 silly reify mark deleted [
+90 silly reify   'C:\\Users\\ASUS\\Desktop\\wechat\\front_admin\\node_modules\\@esbuild\\linux-mips64el'
+90 silly reify ]
+91 verbose reify failed optional dependency C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\@esbuild\linux-loong64
+92 silly reify mark deleted [
+92 silly reify   'C:\\Users\\ASUS\\Desktop\\wechat\\front_admin\\node_modules\\@esbuild\\linux-loong64'
+92 silly reify ]
+93 verbose reify failed optional dependency C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\@esbuild\linux-ia32
+94 silly reify mark deleted [
+94 silly reify   'C:\\Users\\ASUS\\Desktop\\wechat\\front_admin\\node_modules\\@esbuild\\linux-ia32'
+94 silly reify ]
+95 verbose reify failed optional dependency C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\@esbuild\linux-arm64
+96 silly reify mark deleted [
+96 silly reify   'C:\\Users\\ASUS\\Desktop\\wechat\\front_admin\\node_modules\\@esbuild\\linux-arm64'
+96 silly reify ]
+97 verbose reify failed optional dependency C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\@esbuild\linux-arm
+98 silly reify mark deleted [
+98 silly reify   'C:\\Users\\ASUS\\Desktop\\wechat\\front_admin\\node_modules\\@esbuild\\linux-arm'
+98 silly reify ]
+99 verbose reify failed optional dependency C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\@esbuild\freebsd-x64
+100 silly reify mark deleted [
+100 silly reify   'C:\\Users\\ASUS\\Desktop\\wechat\\front_admin\\node_modules\\@esbuild\\freebsd-x64'
+100 silly reify ]
+101 verbose reify failed optional dependency C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\@esbuild\freebsd-arm64
+102 silly reify mark deleted [
+102 silly reify   'C:\\Users\\ASUS\\Desktop\\wechat\\front_admin\\node_modules\\@esbuild\\freebsd-arm64'
+102 silly reify ]
+103 verbose reify failed optional dependency C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\@esbuild\darwin-x64
+104 silly reify mark deleted [
+104 silly reify   'C:\\Users\\ASUS\\Desktop\\wechat\\front_admin\\node_modules\\@esbuild\\darwin-x64'
+104 silly reify ]
+105 verbose reify failed optional dependency C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\@esbuild\darwin-arm64
+106 silly reify mark deleted [
+106 silly reify   'C:\\Users\\ASUS\\Desktop\\wechat\\front_admin\\node_modules\\@esbuild\\darwin-arm64'
+106 silly reify ]
+107 verbose reify failed optional dependency C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\@esbuild\android-x64
+108 silly reify mark deleted [
+108 silly reify   'C:\\Users\\ASUS\\Desktop\\wechat\\front_admin\\node_modules\\@esbuild\\android-x64'
+108 silly reify ]
+109 verbose reify failed optional dependency C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\@esbuild\android-arm64
+110 silly reify mark deleted [
+110 silly reify   'C:\\Users\\ASUS\\Desktop\\wechat\\front_admin\\node_modules\\@esbuild\\android-arm64'
+110 silly reify ]
+111 verbose reify failed optional dependency C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\@esbuild\android-arm
+112 silly reify mark deleted [
+112 silly reify   'C:\\Users\\ASUS\\Desktop\\wechat\\front_admin\\node_modules\\@esbuild\\android-arm'
+112 silly reify ]
+113 verbose reify failed optional dependency C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\@esbuild\aix-ppc64
+114 silly reify mark deleted [
+114 silly reify   'C:\\Users\\ASUS\\Desktop\\wechat\\front_admin\\node_modules\\@esbuild\\aix-ppc64'
+114 silly reify ]
+115 info run esbuild@0.27.3 postinstall node_modules/esbuild node install.js
+116 info run esbuild@0.27.3 postinstall { code: 'EPERM', signal: undefined }
+117 verbose stack Error: spawn EPERM
+117 verbose stack     at ChildProcess.spawn (node:internal/child_process:420:11)
+117 verbose stack     at spawn (node:child_process:762:9)
+117 verbose stack     at promiseSpawn (C:\Users\ASUS\Desktop\wechat\front_admin\node\node_modules\npm\node_modules\@npmcli\promise-spawn\lib\index.js:39:16)
+117 verbose stack     at spawnWithShell (C:\Users\ASUS\Desktop\wechat\front_admin\node\node_modules\npm\node_modules\@npmcli\promise-spawn\lib\index.js:124:10)
+117 verbose stack     at promiseSpawn (C:\Users\ASUS\Desktop\wechat\front_admin\node\node_modules\npm\node_modules\@npmcli\promise-spawn\lib\index.js:12:12)
+117 verbose stack     at runScriptPkg (C:\Users\ASUS\Desktop\wechat\front_admin\node\node_modules\npm\node_modules\@npmcli\run-script\lib\run-script-pkg.js:77:13)
+117 verbose stack     at runScript (C:\Users\ASUS\Desktop\wechat\front_admin\node\node_modules\npm\node_modules\@npmcli\run-script\lib\run-script.js:9:12)
+117 verbose stack     at C:\Users\ASUS\Desktop\wechat\front_admin\node\node_modules\npm\node_modules\@npmcli\arborist\lib\arborist\rebuild.js:329:17
+117 verbose stack     at run (C:\Users\ASUS\Desktop\wechat\front_admin\node\node_modules\npm\node_modules\promise-call-limit\dist\commonjs\index.js:67:22)
+117 verbose stack     at C:\Users\ASUS\Desktop\wechat\front_admin\node\node_modules\npm\node_modules\promise-call-limit\dist\commonjs\index.js:84:9
+118 error code EPERM
+119 error syscall spawn
+120 error errno -4048
+121 error Error: spawn EPERM
+121 error     at ChildProcess.spawn (node:internal/child_process:420:11)
+121 error     at spawn (node:child_process:762:9)
+121 error     at promiseSpawn (C:\Users\ASUS\Desktop\wechat\front_admin\node\node_modules\npm\node_modules\@npmcli\promise-spawn\lib\index.js:39:16)
+121 error     at spawnWithShell (C:\Users\ASUS\Desktop\wechat\front_admin\node\node_modules\npm\node_modules\@npmcli\promise-spawn\lib\index.js:124:10)
+121 error     at promiseSpawn (C:\Users\ASUS\Desktop\wechat\front_admin\node\node_modules\npm\node_modules\@npmcli\promise-spawn\lib\index.js:12:12)
+121 error     at runScriptPkg (C:\Users\ASUS\Desktop\wechat\front_admin\node\node_modules\npm\node_modules\@npmcli\run-script\lib\run-script-pkg.js:77:13)
+121 error     at runScript (C:\Users\ASUS\Desktop\wechat\front_admin\node\node_modules\npm\node_modules\@npmcli\run-script\lib\run-script.js:9:12)
+121 error     at C:\Users\ASUS\Desktop\wechat\front_admin\node\node_modules\npm\node_modules\@npmcli\arborist\lib\arborist\rebuild.js:329:17
+121 error     at run (C:\Users\ASUS\Desktop\wechat\front_admin\node\node_modules\npm\node_modules\promise-call-limit\dist\commonjs\index.js:67:22)
+121 error     at C:\Users\ASUS\Desktop\wechat\front_admin\node\node_modules\npm\node_modules\promise-call-limit\dist\commonjs\index.js:84:9 {
+121 error   errno: -4048,
+121 error   code: 'EPERM',
+121 error   syscall: 'spawn'
+121 error }
+122 error
+122 error The operation was rejected by your operating system.
+122 error It's possible that the file was already in use (by a text editor or antivirus),
+122 error or that you lack permissions to access it.
+122 error
+122 error If you believe this might be a permissions issue, please double-check the
+122 error permissions of the file and its containing directories, or try running
+122 error the command again as root/Administrator.
+123 silly unfinished npm timer reify 1776259988808
+124 silly unfinished npm timer reify:build 1776260003519
+125 silly unfinished npm timer build 1776260003519
+126 silly unfinished npm timer build:deps 1776260003520
+127 silly unfinished npm timer build:run:postinstall 1776260003635
+128 silly unfinished npm timer build:run:postinstall:node_modules/esbuild 1776260003635
+129 verbose cwd C:\Users\ASUS\Desktop\wechat\front_admin
+130 verbose os Windows_NT 10.0.22631
+131 verbose node v20.19.0
+132 verbose npm  v10.8.2
+133 verbose exit -4048
+134 verbose code -4048
+135 error A complete log of this run can be found in: C:\Users\ASUS\Desktop\wechat\backend\.npm-cache\_logs\2026-04-15T13_33_07_052Z-debug-0.log

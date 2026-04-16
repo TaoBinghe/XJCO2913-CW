@@ -1,0 +1,20 @@
+0 verbose cli C:\Users\ASUS\Desktop\wechat\backend\..\front_admin\node\node.exe C:\Users\ASUS\Desktop\wechat\front_admin\node\node_modules\npm\bin\npm-cli.js
+1 info using npm@10.8.2
+2 info using node@v20.19.0
+3 verbose node symlink C:\Users\ASUS\Desktop\wechat\front_admin\node\node.exe
+4 silly config load:file:C:\Users\ASUS\Desktop\wechat\front_admin\node\node_modules\npm\npmrc
+5 silly config load:file:C:\Users\ASUS\Desktop\wechat\front_admin\.npmrc
+6 silly config load:file:C:\Users\ASUS\.npmrc
+7 silly config load:file:C:\Users\ASUS\Desktop\wechat\front_admin\node\etc\npmrc
+8 verbose title npm run build-only
+9 verbose argv "run" "build-only"
+10 verbose logfile logs-max:10 dir:C:\Users\ASUS\Desktop\wechat\backend\.npm-cache\_logs\2026-04-15T13_31_50_793Z-
+11 verbose logfile C:\Users\ASUS\Desktop\wechat\backend\.npm-cache\_logs\2026-04-15T13_31_50_793Z-debug-0.log
+12 silly logfile start cleaning logs, removing 2 files
+13 silly logfile done cleaning log files
+14 verbose cwd C:\Users\ASUS\Desktop\wechat\front_admin
+15 verbose os Windows_NT 10.0.22631
+16 verbose node v20.19.0
+17 verbose npm  v10.8.2
+18 verbose exit 0
+19 info ok

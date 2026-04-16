@@ -1,0 +1,28 @@
+0 verbose cli C:\Users\ASUS\Desktop\wechat\front_admin\node\node.exe C:\Users\ASUS\Desktop\wechat\front_admin\node\node_modules\npm\bin\npm-cli.js
+1 info using npm@10.8.2
+2 info using node@v20.19.0
+3 silly config load:file:C:\Users\ASUS\Desktop\wechat\front_admin\node\node_modules\npm\npmrc
+4 silly config load:file:C:\Users\ASUS\Desktop\wechat\front_admin\.npmrc
+5 silly config load:file:C:\Users\ASUS\.npmrc
+6 silly config load:file:C:\Users\ASUS\Desktop\wechat\front_admin\node\etc\npmrc
+7 verbose title npm ci
+8 verbose argv "ci"
+9 verbose logfile logs-max:10 dir:C:\Users\ASUS\Desktop\wechat\backend\.npm-cache\_logs\2026-04-15T13_31_17_041Z-
+10 verbose logfile C:\Users\ASUS\Desktop\wechat\backend\.npm-cache\_logs\2026-04-15T13_31_17_041Z-debug-0.log
+11 silly packumentCache heap:4345298944 maxSize:1086324736 maxEntrySize:543162368
+12 silly logfile start cleaning logs, removing 1 files
+13 silly logfile done cleaning log files
+14 silly idealTree buildDeps
+15 verbose stack Error: ENOTEMPTY: directory not empty, rmdir 'C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\lodash-es'
+16 error code ENOTEMPTY
+17 error syscall rmdir
+18 error path C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\lodash-es
+19 error errno -4051
+20 error ENOTEMPTY: directory not empty, rmdir 'C:\Users\ASUS\Desktop\wechat\front_admin\node_modules\lodash-es'
+21 verbose cwd C:\Users\ASUS\Desktop\wechat\front_admin
+22 verbose os Windows_NT 10.0.22631
+23 verbose node v20.19.0
+24 verbose npm  v10.8.2
+25 verbose exit -4051
+26 verbose code -4051
+27 error A complete log of this run can be found in: C:\Users\ASUS\Desktop\wechat\backend\.npm-cache\_logs\2026-04-15T13_31_17_041Z-debug-0.log
