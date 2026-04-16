@@ -1,41 +1,58 @@
 package com.greengo.service;
 
 import com.greengo.domain.Booking;
+import com.greengo.domain.BookingSettlementResult;
 import com.greengo.domain.PricingPlan;
+import com.greengo.domain.Scooter;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
-// Booking service: pricing plans, book scooter, switch booking status, list by user
 @Service
 public interface BookingService {
 
-    // List all pricing plans
     List<PricingPlan> listPricingPlan();
 
-    // Book scooter for given period
+    Booking createStoreBooking(Long storeId, LocalDateTime appointmentStart, String hiredPeriod);
+
+    Booking cancelStoreBooking(Long bookingId);
+
+    Booking startScanRide(String scooterCode);
+
+    List<Scooter> listPickupScooters(Long bookingId);
+
+    Booking pickupBooking(Long bookingId, Long scooterId);
+
+    Booking lockScooter(Long bookingId);
+
+    Booking unlockScooter(Long bookingId);
+
+    BookingSettlementResult returnBooking(Long bookingId);
+
+    BookingSettlementResult returnScanRide(Long bookingId, BigDecimal longitude, BigDecimal latitude);
+
+    int expireReservations();
+
+    int markOverdueBookings();
+
+    // Legacy direct-booking API kept for compilation compatibility.
     boolean bookScooter(Integer scooterId, String hiredPeriod);
 
-    // Legacy status toggle endpoint used by the existing front-end order detail page
     boolean updateBookingStatus(Long bookingId, String status);
 
-    // Activate a pending booking
     boolean activateBooking(Long bookingId);
 
-    // Change the hire period of a pending booking owned by the current user
     Booking modifyBookingPeriod(Long bookingId, String hiredPeriod);
 
-    // Cancel a pending booking owned by the current user
     Booking cancelBooking(Long bookingId);
 
-    // Extend an active booking owned by the current user by another fixed hire period
     Booking renewBooking(Long bookingId, String hiredPeriod);
 
-    // Finish an active booking, pay for it, and return the updated booking and payment
     Map<String, Object> finishBooking(Long bookingId);
 
-    // List bookings by user id, newest first
     List<Booking> listBookingsByUserId(Long userId);
 }
 

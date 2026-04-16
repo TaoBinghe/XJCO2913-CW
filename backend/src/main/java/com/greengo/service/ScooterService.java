@@ -9,6 +9,10 @@ public interface ScooterService {
 
     List<Scooter> listAll();
 
+    List<Scooter> listMapScooters();
+
+    Scooter getById(Long id);
+
     boolean addScooter(Scooter scooter);
 
     boolean updateScooter(Scooter scooter);
