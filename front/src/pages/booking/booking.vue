@@ -104,6 +104,10 @@ import { startScanRide } from '@/api/booking'
 import { getScooterList, getScooterRoute } from '@/api/scooter'
 import { sortScooters } from '@/utils/booking'
 import { getToken } from '@/utils/auth'
+import {
+  getCurrentLocationWithPermission,
+  LOCATION_ERROR_CODES
+} from '@/utils/location'
 
 const DEFAULT_CENTER = {
   latitude: 30.76732,
@@ -346,15 +350,6 @@ export default {
       uni.navigateTo({ url: '/pages/login/login' })
       return false
     },
-    async getCurrentLocation() {
-      return new Promise((resolve, reject) => {
-        uni.getLocation({
-          type: 'gcj02',
-          success: resolve,
-          fail: reject
-        })
-      })
-    },
     async handlePreviewRoute() {
       if (!this.selectedScooter) {
         uni.showToast({ title: 'Please choose a scooter on the map', icon: 'none' })
@@ -366,7 +361,11 @@ export default {
 
       this.routeLoading = true
       try {
-        const location = await this.getCurrentLocation()
+        const location = await getCurrentLocationWithPermission({
+          reasonTitle: 'Location permission needed',
+          reasonContent: 'To preview the walking route, please enable location permission in settings.',
+          successHint: 'Location enabled. Please tap again.'
+        })
         const res = await getScooterRoute(
           this.selectedScooter.id,
           location.longitude,
@@ -385,8 +384,8 @@ export default {
         }]
       } catch (e) {
         this.clearRoutePreview()
-        if (e && e.errMsg) {
-          uni.showToast({ title: 'Location permission is required for route preview', icon: 'none' })
+        if (e?.code === LOCATION_ERROR_CODES.LOCATION_UNAVAILABLE) {
+          uni.showToast({ title: 'Could not get your location for route preview', icon: 'none' })
         }
       } finally {
         this.routeLoading = false
