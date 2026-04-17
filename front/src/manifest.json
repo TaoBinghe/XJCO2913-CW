@@ -54,6 +54,14 @@
         "setting" : {
             "urlCheck" : false
         },
+        "permission" : {
+            "scope.userLocation" : {
+                "desc" : "Used for route and return"
+            }
+        },
+        "requiredPrivateInfos" : [
+            "getLocation"
+        ],
         "usingComponents" : true
     },
     "mp-alipay" : {

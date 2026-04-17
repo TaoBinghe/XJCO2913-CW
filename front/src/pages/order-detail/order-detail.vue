@@ -187,6 +187,10 @@ import {
 } from '@/utils/booking'
 import { getPaymentReceipt, savePaymentReceipt } from '@/utils/payment-receipts'
 import { getToken } from '@/utils/auth'
+import {
+  getCurrentLocationWithPermission,
+  LOCATION_ERROR_CODES
+} from '@/utils/location'
 
 export default {
   data() {
@@ -324,15 +328,6 @@ export default {
     formatCurrency(value) {
       return formatCurrency(value)
     },
-    async getCurrentLocation() {
-      return new Promise((resolve, reject) => {
-        uni.getLocation({
-          type: 'gcj02',
-          success: resolve,
-          fail: reject
-        })
-      })
-    },
     async confirmAction(title, content, confirmColor = '#5d8c22') {
       return new Promise((resolve) => {
         uni.showModal({
@@ -435,7 +430,11 @@ export default {
       }
     },
     async returnScanRideWithLocation() {
-      const location = await this.getCurrentLocation()
+      const location = await getCurrentLocationWithPermission({
+        reasonTitle: 'Location permission needed',
+        reasonContent: 'To return this scan ride, please enable location permission so we can upload your return coordinates.',
+        successHint: 'Location enabled. Please tap again.'
+      })
       return returnScanRide(this.order.id, location.longitude, location.latitude)
     },
     async handleReturn() {
@@ -458,8 +457,8 @@ export default {
         this.applySettlementResult(res.data)
         uni.showToast({ title: 'Ride completed', icon: 'success' })
       } catch (e) {
-        if (e && e.errMsg) {
-          uni.showToast({ title: 'Location permission is required to return a scan ride', icon: 'none' })
+        if (e?.code === LOCATION_ERROR_CODES.LOCATION_UNAVAILABLE) {
+          uni.showToast({ title: 'Could not get your location to return this ride', icon: 'none' })
         }
       } finally {
         this.returning = false
