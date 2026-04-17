@@ -1,5 +1,19 @@
 const DURATION_UNIT_ORDER = ['MINUTE', 'HOUR', 'DAY', 'WEEK', 'MONTH']
 const HIRE_PERIOD_PATTERN = /^(MINUTE|HOUR|DAY|WEEK|MONTH)_(\d+)$/i
+const OPEN_BOOKING_STATUSES = ['RESERVED', 'IN_PROGRESS', 'OVERDUE']
+const HISTORY_BOOKING_STATUSES = ['COMPLETED', 'CANCELLED', 'NO_SHOW_CANCELLED']
+const STATUS_TONE_MAP = {
+  RESERVED: 'reserved',
+  IN_PROGRESS: 'active',
+  OVERDUE: 'overdue',
+  COMPLETED: 'completed',
+  CANCELLED: 'cancelled',
+  NO_SHOW_CANCELLED: 'cancelled'
+}
+const RENTAL_TYPE_LABELS = {
+  STORE_PICKUP: 'Store Pickup',
+  SCAN_RIDE: 'Scan Ride'
+}
 
 const DURATION_UNIT_CONFIG = {
   MINUTE: { singular: 'Minute', plural: 'Minutes', short: 'M', sortMinutes: 1 },
@@ -24,11 +38,6 @@ export function parseHirePeriod(period) {
     code: `${unit}_${value}`,
     sortWeight: value * DURATION_UNIT_CONFIG[unit].sortMinutes
   }
-}
-
-export function normalizeBookingStatus(status) {
-  if (!status) return ''
-  return status === 'ACTIVATED' ? 'ACTIVE' : status
 }
 
 export function formatPeriod(period) {
@@ -57,8 +66,32 @@ export function formatTime(timeStr) {
 }
 
 export function isOpenBooking(status) {
-  const normalizedStatus = normalizeBookingStatus(status)
-  return normalizedStatus === 'PENDING' || normalizedStatus === 'ACTIVE'
+  return OPEN_BOOKING_STATUSES.includes(String(status || '').toUpperCase())
+}
+
+export function isHistoryBooking(status) {
+  return HISTORY_BOOKING_STATUSES.includes(String(status || '').toUpperCase())
+}
+
+export function getBookingTone(status) {
+  const normalizedStatus = String(status || '').toUpperCase()
+  return STATUS_TONE_MAP[normalizedStatus] || 'reserved'
+}
+
+export function getRentalTypeLabel(rentalType) {
+  const normalizedType = String(rentalType || '').toUpperCase()
+  return RENTAL_TYPE_LABELS[normalizedType] || (rentalType || '-')
+}
+
+export function sortBookings(bookings = []) {
+  return [...bookings].sort((left, right) => {
+    const rightTime = Date.parse(right?.createdAt || right?.updatedAt || '') || 0
+    const leftTime = Date.parse(left?.createdAt || left?.updatedAt || '') || 0
+    if (rightTime !== leftTime) {
+      return rightTime - leftTime
+    }
+    return Number(right?.id || 0) - Number(left?.id || 0)
+  })
 }
 
 export function sortPricingPlans(plans = []) {
@@ -107,21 +140,43 @@ export function buildEntityMap(items = [], key = 'id') {
   }, {})
 }
 
-export function buildBookingViewModel(booking, scooterMap = {}, pricingPlanMap = {}) {
-  const normalizedStatus = normalizeBookingStatus(booking.status)
-  const scooter = scooterMap[String(booking.scooterId)] || {}
-  const pricingPlan = pricingPlanMap[String(booking.pricingPlanId)] || {}
+function getBookingTitle(booking) {
+  if (booking.rentalType === 'STORE_PICKUP') {
+    return booking.storeName || 'Store Reservation'
+  }
+  return booking.scooterCode || 'Scan Ride'
+}
+
+function getBookingLocation(booking) {
+  if (booking.rentalType === 'STORE_PICKUP') {
+    return booking.storeAddress || booking.pickupLocation || 'Store address unavailable'
+  }
+  return booking.returnLocation || booking.pickupLocation || 'Map location unavailable'
+}
+
+function getBookingTimelineLabel(booking) {
+  if (booking.rentalType === 'STORE_PICKUP') {
+    return booking.status === 'RESERVED'
+      ? formatTime(booking.startTime)
+      : formatTime(booking.returnTime || booking.endTime)
+  }
+  return formatTime(booking.returnTime || booking.startTime)
+}
+
+export function buildBookingViewModel(booking) {
+  const normalizedStatus = String(booking?.status || '').toUpperCase()
 
   return {
     ...booking,
     status: normalizedStatus,
-    scooterCode: scooter.scooterCode || `#${booking.scooterId}`,
-    scooterLocation: scooter.location || 'Unknown location',
-    scooterLongitude: scooter.longitude ?? null,
-    scooterLatitude: scooter.latitude ?? null,
-    hiredPeriod: pricingPlan.hirePeriod || '',
-    hiredPeriodLabel: formatPeriod(pricingPlan.hirePeriod),
-    hiredPeriodBadge: formatPeriodBadge(pricingPlan.hirePeriod),
-    totalCostValue: Number(booking.totalCost || 0)
+    rentalTypeLabel: getRentalTypeLabel(booking?.rentalType),
+    statusTone: getBookingTone(normalizedStatus),
+    displayTitle: getBookingTitle(booking || {}),
+    displayLocation: getBookingLocation(booking || {}),
+    timelineLabel: getBookingTimelineLabel(booking || {}),
+    hirePeriodLabel: formatPeriod(booking?.hirePeriod),
+    hirePeriodBadge: formatPeriodBadge(booking?.hirePeriod),
+    totalCostValue: Number(booking?.totalCost || 0),
+    overdueCostValue: Number(booking?.overdueCost || 0)
   }
 }

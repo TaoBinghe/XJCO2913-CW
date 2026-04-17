@@ -3,7 +3,7 @@
     <div class="page-header">
       <div>
         <h2 class="page-heading">Weekly Revenue</h2>
-        <p class="page-copy">Weekly revenue summary grouped by the current hire periods.</p>
+        <p class="page-copy">Weekly Sprint 3 revenue summary grouped by the current hire periods, including minute-based scan rides.</p>
       </div>
       <el-button :loading="loading" @click="loadSummary">
         <el-icon><Refresh /></el-icon>

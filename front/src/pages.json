@@ -43,6 +43,12 @@
 			}
 		},
 		{
+			"path": "pages/store-booking/store-booking",
+			"style": {
+				"navigationBarTitleText": "Store Reservation"
+			}
+		},
+		{
 			"path": "pages/order-detail/order-detail",
 			"style": {
 				"navigationBarTitleText": "Order Detail"

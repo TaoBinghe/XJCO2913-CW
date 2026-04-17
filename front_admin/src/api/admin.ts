@@ -15,9 +15,14 @@ export interface ScooterDto {
   id?: number
   scooterCode: string
   status: string
+  storeId: number | null
+  rentalMode: string
+  lockStatus: string
   location: string | null
   longitude: number | null
   latitude: number | null
+  storeName: string | null
+  storeAddress: string | null
   createdAt?: string
   updatedAt?: string
 }
@@ -25,9 +30,37 @@ export interface ScooterDto {
 export interface ScooterUpsertPayload {
   id?: number
   scooterCode: string
+  rentalMode?: string
+  storeId?: number | null
   status?: string
-  longitude: number
-  latitude: number
+  lockStatus?: string
+  location?: string | null
+  longitude?: number | null
+  latitude?: number | null
+}
+
+export interface StoreDto {
+  id?: number
+  name: string
+  address: string | null
+  longitude: number | null
+  latitude: number | null
+  status: string
+  totalInventory?: number
+  currentAvailableInventory?: number
+  bookableInventory?: number
+  appointmentStart?: string | null
+  appointmentEnd?: string | null
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface StoreUpsertPayload {
+  name: string
+  address?: string | null
+  longitude: number | null
+  latitude: number | null
+  status?: string
 }
 
 export function adminLogin(username: string, password: string) {
@@ -53,7 +86,7 @@ export function listScooters() {
   })
 }
 
-export function resolveScooterLocation(longitude: number, latitude: number) {
+export function resolveLocationFromCoordinates(longitude: number, latitude: number) {
   return request<ApiResponse<string>>({
     url: '/admin/scooter/resolve-location',
     method: 'get',
@@ -85,7 +118,42 @@ export function deleteScooter(id: number) {
   })
 }
 
-// ----- Admin Pricing Plans CRUD -----
+export function listStores() {
+  return request<ApiResponse<StoreDto[]>>({
+    url: '/admin/stores',
+    method: 'get'
+  })
+}
+
+export function getStoreById(id: number) {
+  return request<ApiResponse<StoreDto>>({
+    url: `/admin/stores/${id}`,
+    method: 'get'
+  })
+}
+
+export function createStore(body: StoreUpsertPayload) {
+  return request({
+    url: '/admin/stores',
+    method: 'post',
+    data: body
+  })
+}
+
+export function updateStore(id: number, body: StoreUpsertPayload) {
+  return request({
+    url: `/admin/stores/${id}`,
+    method: 'put',
+    data: body
+  })
+}
+
+export function deleteStore(id: number) {
+  return request({
+    url: `/admin/stores/${id}`,
+    method: 'delete'
+  })
+}
 
 export interface PricingPlanDto {
   id?: number

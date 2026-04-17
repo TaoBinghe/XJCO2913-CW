@@ -4,11 +4,13 @@ const DEFAULT_WX_CLOUD_ENV_ID = 'prod-4g7i1ww2f71d4f7b'
 const DEFAULT_WX_CLOUD_SERVICE = 'green-go'
 const WX_CLOUD_ENV_ID = (import.meta.env.VITE_WX_CLOUD_ENV_ID || DEFAULT_WX_CLOUD_ENV_ID).trim()
 const WX_CLOUD_SERVICE = (import.meta.env.VITE_WX_CLOUD_SERVICE || DEFAULT_WX_CLOUD_SERVICE).trim()
+const MP_WEIXIN_REQUEST_MODE = (import.meta.env.VITE_MP_WEIXIN_REQUEST_MODE || 'cloud').trim().toLowerCase()
 const BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '')
 const ABSOLUTE_HTTP_URL_RE = /^https?:\/\//i
 
 function buildQueryString(params = {}) {
   return Object.keys(params)
+    .filter((key) => params[key] !== undefined && params[key] !== null && params[key] !== '')
     .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`)
     .join('&')
 }
@@ -130,6 +132,9 @@ export function request(options) {
   const { finalPath, finalData } = buildRequestPayload(url, data, contentType, header)
 
   // #ifdef MP-WEIXIN
+  if (MP_WEIXIN_REQUEST_MODE === 'http') {
+    return requestByHttp(method, finalPath, finalData, header)
+  }
   return requestByCloudContainer(method, finalPath, finalData, header)
   // #endif
 

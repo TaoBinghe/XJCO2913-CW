@@ -31,9 +31,25 @@
         <view class="card menu-card" @click="goOrders">
           <view class="menu-copy">
             <text class="menu-title">My Orders</text>
-            <text class="menu-desc">Review bookings, activation steps, and payment results.</text>
+            <text class="menu-desc">Review store reservations, scan rides, and payment receipts.</text>
           </view>
           <text class="menu-pill">Open</text>
+        </view>
+
+        <view class="card menu-card" @click="goStoreBooking">
+          <view class="menu-copy">
+            <text class="menu-title">Reserve at a Store</text>
+            <text class="menu-desc">Book a pickup window and compare store inventory before you arrive.</text>
+          </view>
+          <text class="menu-pill">Reserve</text>
+        </view>
+
+        <view class="card menu-card" @click="goScanRide">
+          <view class="menu-copy">
+            <text class="menu-title">Scan to Ride</text>
+            <text class="menu-desc">Open the live map, preview the route, and start a scan ride on demand.</text>
+          </view>
+          <text class="menu-pill">Ride</text>
         </view>
       </view>
 
@@ -67,8 +83,8 @@ export default {
     },
     profileNote() {
       return this.isLoggedIn
-        ? 'You are ready for your next ride and payment check.'
-        : 'Sign in to start bookings, payments, and order tracking.'
+        ? 'You are ready for your next reservation, scan ride, and payment check.'
+        : 'Sign in to reserve scooters, start scan rides, and track every order.'
     }
   },
   onShow() {
@@ -85,6 +101,12 @@ export default {
         return
       }
       uni.switchTab({ url: '/pages/orders/orders' })
+    },
+    goStoreBooking() {
+      uni.navigateTo({ url: '/pages/store-booking/store-booking' })
+    },
+    goScanRide() {
+      uni.navigateTo({ url: '/pages/booking/booking' })
     },
     handleLogout() {
       uni.showModal({

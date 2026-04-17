@@ -1,71 +1,75 @@
 import { request } from '@/utils/request'
 
-export function getPricingPlans() {
+export function getReservationPricingPlans() {
   return request({
     url: '/booking',
     method: 'GET'
   })
 }
 
-export function createBooking(scooterId, hiredPeriod) {
+export function createStoreBooking({ storeId, appointmentStart, hiredPeriod }) {
   return request({
     url: '/booking',
     method: 'POST',
-    data: { scooterId, hiredPeriod },
-    contentType: 'query'
+    data: { storeId, appointmentStart, hiredPeriod }
   })
 }
 
-export function updateBookingStatus(bookingId, status) {
+export function startScanRide(scooterCode) {
   return request({
-    url: '/booking/status',
+    url: '/booking/scan/start',
     method: 'POST',
-    data: { bookingId, status },
-    contentType: 'query'
+    data: { scooterCode }
   })
 }
 
-export function activateBooking(bookingId) {
+export function cancelStoreBooking(bookingId) {
   return request({
-    url: '/booking/activate',
-    method: 'POST',
-    data: { bookingId },
-    contentType: 'query'
+    url: `/booking/${bookingId}/cancel`,
+    method: 'POST'
   })
 }
 
-export function modifyBookingPeriod(bookingId, hiredPeriod) {
+export function getPickupScooters(bookingId) {
   return request({
-    url: '/booking/modify-period',
-    method: 'POST',
-    data: { bookingId, hiredPeriod },
-    contentType: 'query'
+    url: `/booking/${bookingId}/pickup-scooters`,
+    method: 'GET'
   })
 }
 
-export function cancelBooking(bookingId) {
+export function pickupStoreBooking(bookingId, scooterId) {
   return request({
-    url: '/booking/cancel',
+    url: `/booking/${bookingId}/pickup`,
     method: 'POST',
-    data: { bookingId },
-    contentType: 'query'
+    data: { scooterId }
   })
 }
 
-export function renewBooking(bookingId, hiredPeriod) {
+export function lockBooking(bookingId) {
   return request({
-    url: '/booking/renew',
-    method: 'POST',
-    data: { bookingId, hiredPeriod },
-    contentType: 'query'
+    url: `/booking/${bookingId}/lock`,
+    method: 'POST'
   })
 }
 
-export function finishBooking(bookingId) {
+export function unlockBooking(bookingId) {
   return request({
-    url: '/booking/finish',
+    url: `/booking/${bookingId}/unlock`,
+    method: 'POST'
+  })
+}
+
+export function returnStoreBooking(bookingId) {
+  return request({
+    url: `/booking/${bookingId}/return`,
+    method: 'POST'
+  })
+}
+
+export function returnScanRide(bookingId, longitude, latitude) {
+  return request({
+    url: `/booking/scan/${bookingId}/return`,
     method: 'POST',
-    data: { bookingId },
-    contentType: 'query'
+    data: { longitude, latitude }
   })
 }

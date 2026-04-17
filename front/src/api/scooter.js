@@ -6,3 +6,16 @@ export function getScooterList() {
     method: 'GET'
   })
 }
+
+export function getScooterRoute(scooterId, fromLongitude, fromLatitude) {
+  return request({
+    url: '/scooter/route',
+    method: 'GET',
+    data: {
+      scooterId,
+      fromLongitude,
+      fromLatitude
+    },
+    contentType: 'query'
+  })
+}

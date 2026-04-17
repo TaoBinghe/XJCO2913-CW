@@ -3,7 +3,7 @@
     <div class="page-header">
       <div>
         <h2 class="page-heading">Dashboard</h2>
-        <p class="page-copy">Admin summary for fleet, pricing, and weekly revenue.</p>
+        <p class="page-copy">Sprint 3 admin summary for stores, fleet, pricing, and weekly revenue.</p>
       </div>
       <el-button :loading="loading" @click="loadDashboardData">
         <el-icon><Refresh /></el-icon>
@@ -66,7 +66,7 @@
         <el-card class="quick-actions-card">
           <template #header>
             <div class="card-header">
-              <span class="card-title">Sprint 2 Actions</span>
+              <span class="card-title">Sprint 3 Actions</span>
               <span class="card-note">Jump straight into the key admin workflows.</span>
             </div>
           </template>
@@ -75,6 +75,10 @@
             <el-button type="primary" plain class="action-btn" @click="router.push('/scooters')">
               <el-icon><Van /></el-icon>
               Manage Scooters
+            </el-button>
+            <el-button type="info" plain class="action-btn" @click="router.push('/stores')">
+              <el-icon><Shop /></el-icon>
+              Manage Stores ({{ storeCount }})
             </el-button>
             <el-button type="success" plain class="action-btn" @click="router.push('/pricing')">
               <el-icon><PriceTag /></el-icon>
@@ -127,7 +131,7 @@
           <template #header>
             <div class="card-header">
               <span class="card-title">Weekly Revenue Buckets</span>
-              <span class="card-note">All current hire periods are shown, including plans with zero revenue.</span>
+              <span class="card-note">All current hire periods are shown, including minute-based scan ride plans.</span>
             </div>
           </template>
 
@@ -187,7 +191,7 @@
           <template #header>
             <div class="card-header">
               <span class="card-title">Current Pricing Plans</span>
-              <span class="card-note">Admin pricing API only.</span>
+              <span class="card-note">Admin pricing API only, including minute-based scan ride plans.</span>
             </div>
           </template>
 
@@ -226,6 +230,7 @@ import {
   getPricingPlanList,
   getWeeklyRevenueSummary,
   listScooters,
+  listStores,
   listUsers,
   type AdminWeeklyRevenueSummary,
   type PricingPlanDto
@@ -244,6 +249,7 @@ const router = useRouter()
 const loading = ref(false)
 
 const scooterCount = ref(0)
+const storeCount = ref(0)
 const userCount = ref(0)
 const planCount = ref(0)
 const plans = ref<PricingPlanDto[]>([])
@@ -268,20 +274,23 @@ const revenueChartItems = computed(() => {
 async function loadDashboardData() {
   loading.value = true
   try {
-    const [scootersRes, usersRes, plansRes, revenueRes] = await Promise.all([
+    const [scootersRes, storesRes, usersRes, plansRes, revenueRes] = await Promise.all([
       listScooters(),
+      listStores(),
       listUsers(),
       getPricingPlanList(),
       getWeeklyRevenueSummary()
     ])
 
     scooterCount.value = (scootersRes.data || []).length
+    storeCount.value = (storesRes.data || []).length
     userCount.value = (usersRes.data || []).length
     plans.value = sortPlansByPeriod(plansRes.data || [])
     planCount.value = plans.value.length
     revenueSummary.value = revenueRes.data || null
   } catch {
     scooterCount.value = 0
+    storeCount.value = 0
     userCount.value = 0
     plans.value = []
     planCount.value = 0
