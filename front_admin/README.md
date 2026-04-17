@@ -40,3 +40,12 @@ npm run dev
 ```sh
 npm run build
 ```
+
+## API Base URL
+
+In the normal deployment flow, `front_admin` is bundled into the Spring Boot
+backend and served from `/admin-ui`, so the built app should use the same
+origin for `/admin/**` requests.
+
+Leave `VITE_ADMIN_API_BASE_URL` empty unless you are intentionally deploying
+the admin frontend on a different domain from the backend API.

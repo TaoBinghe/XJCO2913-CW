@@ -7,106 +7,70 @@
       :scale="fullscreenMapScale"
       :markers="mapMarkers"
       :circles="mapCircles"
+      :polyline="routePolylines"
       :enable-scroll="true"
       :enable-zoom="true"
       @markertap="handleMarkerTap"
     >
-
       <cover-view class="booking-bottom-sheet">
         <template v-if="scooterLoading">
-          <cover-view class="sheet-title">Loading scooters...</cover-view>
-          <cover-view class="sheet-copy">Pulling the live fleet and map positions now.</cover-view>
+          <cover-view class="sheet-title">Loading scan scooters...</cover-view>
+          <cover-view class="sheet-copy">Pulling the public map fleet right now.</cover-view>
         </template>
 
         <template v-else-if="!scooters.length">
-          <cover-view class="sheet-title">No scooters loaded</cover-view>
-          <cover-view class="sheet-copy">We could not load the fleet list right now. Please try again later.</cover-view>
+          <cover-view class="sheet-title">No scan scooters available</cover-view>
+          <cover-view class="sheet-copy">Try again later or switch to store pickup reservations.</cover-view>
         </template>
 
-        <template v-else-if="bookingStep === 'select'">
-          <cover-view class="sheet-title">
-            {{ selectedScooter ? selectedScooter.scooterCode : 'Browse available scooters' }}
-          </cover-view>
+        <template v-else>
+          <cover-view class="sheet-kicker">SCAN RIDE</cover-view>
+          <cover-view class="sheet-title">{{ selectedScooter ? selectedScooter.scooterCode : 'Browse live scooters' }}</cover-view>
           <cover-view class="sheet-copy">
-            {{ selectedScooter ? (selectedScooter.location || 'Unknown location') : '' }}
+            {{ selectedScooter ? (selectedScooter.location || 'Location unavailable') : 'Tap a marker, scan a QR code, or type a scooter code above.' }}
           </cover-view>
 
           <cover-view v-if="selectedScooter" class="sheet-info-card">
             <cover-view class="sheet-info-row">
-              <cover-view class="sheet-info-label">Scooter ID</cover-view>
-              <cover-view class="sheet-info-value">#{{ selectedScooter.id }}</cover-view>
-            </cover-view>
-            <cover-view class="sheet-info-row">
               <cover-view class="sheet-info-label">Status</cover-view>
               <cover-view class="sheet-info-value">{{ selectedScooter.status }}</cover-view>
+            </cover-view>
+            <cover-view class="sheet-info-row">
+              <cover-view class="sheet-info-label">Lock</cover-view>
+              <cover-view class="sheet-info-value">{{ selectedScooter.lockStatus || 'LOCKED' }}</cover-view>
+            </cover-view>
+            <cover-view v-if="routeInfo" class="sheet-info-row">
+              <cover-view class="sheet-info-label">Walk</cover-view>
+              <cover-view class="sheet-info-value">
+                {{ formatDistance(routeInfo.distanceMeters) }} · {{ formatDuration(routeInfo.durationSeconds) }}
+              </cover-view>
+            </cover-view>
+          </cover-view>
+
+          <cover-view v-else class="sheet-note-card">
+            <cover-view class="sheet-note-line">Live scooters: {{ availableCount }}</cover-view>
+            <cover-view class="sheet-note-line">Manual entry: {{ manualCode || 'Type a scooter code to search or ride' }}</cover-view>
+          </cover-view>
+
+          <cover-view class="sheet-actions">
+            <cover-view class="sheet-button sheet-button-secondary" @tap="handleScanCode">
+              {{ scanning ? 'Scanning...' : 'Scan QR' }}
+            </cover-view>
+            <cover-view class="sheet-button sheet-button-secondary" @tap="handlePreviewRoute">
+              {{ routeLoading ? 'Loading...' : 'Preview Route' }}
             </cover-view>
           </cover-view>
 
           <cover-view class="sheet-actions">
             <cover-view class="sheet-button sheet-button-secondary" @tap="focusAvailableScooter">
-              Recenter Map
+              Recenter
             </cover-view>
             <cover-view
               class="sheet-button sheet-button-primary"
-              :class="{ 'sheet-button-disabled': !canUseSelectedScooter }"
-              @tap="handleUseScooter"
+              :class="{ 'sheet-button-disabled': !canStartRide }"
+              @tap="handleStartRide"
             >
-              {{ !selectedScooter ? 'Pick a Scooter' : (canUseSelectedScooter ? 'Use This Scooter' : 'Unavailable') }}
-            </cover-view>
-          </cover-view>
-        </template>
-
-        <template v-else>
-          <cover-view class="sheet-kicker">Booking Order</cover-view>
-          <cover-view class="sheet-title">{{ selectedScooter ? selectedScooter.scooterCode : 'Selected scooter' }}</cover-view>
-          <cover-view class="sheet-copy">
-            {{ selectedScooter ? (selectedScooter.location || 'Unknown location') : 'Choose a scooter first.' }}
-          </cover-view>
-
-          <cover-view class="sheet-order-card">
-            <cover-view class="sheet-order-row">
-              <cover-view class="sheet-order-label">Scooter</cover-view>
-              <cover-view class="sheet-order-value">{{ selectedScooter ? selectedScooter.scooterCode : '-' }}</cover-view>
-            </cover-view>
-            <cover-view class="sheet-order-row">
-              <cover-view class="sheet-order-label">Location</cover-view>
-              <cover-view class="sheet-order-value">{{ selectedScooter ? (selectedScooter.location || 'Unknown location') : '-' }}</cover-view>
-            </cover-view>
-            <cover-view class="sheet-order-row">
-              <cover-view class="sheet-order-label">Plan</cover-view>
-              <cover-view class="sheet-order-value">{{ selectedPlan ? formatPeriod(selectedPlan.hirePeriod) : 'Choose below' }}</cover-view>
-            </cover-view>
-            <cover-view class="sheet-order-row">
-              <cover-view class="sheet-order-label">Price</cover-view>
-              <cover-view class="sheet-order-value sheet-order-price">
-                {{ selectedPlan ? formatCurrency(selectedPlan.price) : '-' }}
-              </cover-view>
-            </cover-view>
-          </cover-view>
-
-          <cover-view class="sheet-plan-list">
-            <cover-view
-              v-for="plan in plans"
-              :key="plan.id"
-              class="sheet-plan-option"
-              :class="{ 'sheet-plan-option-active': selectedPeriod === plan.hirePeriod }"
-              @tap="selectPlan(plan)"
-            >
-              <cover-view class="sheet-plan-name">{{ formatPeriod(plan.hirePeriod) }}</cover-view>
-              <cover-view class="sheet-plan-price">{{ formatCurrency(plan.price) }}</cover-view>
-            </cover-view>
-          </cover-view>
-
-          <cover-view class="sheet-actions">
-            <cover-view class="sheet-button sheet-button-secondary" @tap="handleChangeScooter">
-              Change Scooter
-            </cover-view>
-            <cover-view
-              class="sheet-button sheet-button-primary"
-              :class="{ 'sheet-button-disabled': !canSubmit }"
-              @tap="handleBook"
-            >
-              {{ submitting ? 'Creating...' : 'Confirm Booking' }}
+              {{ startingRide ? 'Starting...' : startRideLabel }}
             </cover-view>
           </cover-view>
         </template>
@@ -119,16 +83,16 @@
       </view>
       <view class="booking-search-shell" :style="bookingSearchStyle">
         <input
-          v-model="searchScooterId"
+          v-model="manualCode"
           class="booking-search-input"
-          type="number"
+          type="text"
           confirm-type="search"
-          placeholder="Search scooter ID"
+          placeholder="Enter scooter code"
           placeholder-style="color: #8f9892"
-          @confirm="handleSearchScooter"
+          @confirm="handleFindScooter"
         />
-        <view class="booking-search-button" @click="handleSearchScooter">
-          Go
+        <view class="booking-search-button" @click="handleFindScooter">
+          Find
         </view>
       </view>
     </view>
@@ -136,39 +100,49 @@
 </template>
 
 <script>
-import { createBooking, getPricingPlans } from '@/api/booking'
-import { getScooterList } from '@/api/scooter'
-import { getMyOrders } from '@/api/user'
-import {
-  formatCurrency,
-  formatPeriod,
-  sortPricingPlans,
-  sortScooters
-} from '@/utils/booking'
+import { startScanRide } from '@/api/booking'
+import { getScooterList, getScooterRoute } from '@/api/scooter'
+import { sortScooters } from '@/utils/booking'
+import { getToken } from '@/utils/auth'
 
 const DEFAULT_CENTER = {
-  latitude: 23.097891,
-  longitude: 113.323912
+  latitude: 30.76732,
+  longitude: 103.98212
+}
+
+function parseScooterCode(rawValue) {
+  const rawText = String(rawValue || '').trim()
+  if (!rawText) return ''
+
+  const queryMatch = rawText.match(/[?&]scooterCode=([^&#]+)/i)
+  if (queryMatch && queryMatch[1]) {
+    return decodeURIComponent(queryMatch[1]).trim()
+  }
+
+  const tokenMatch = rawText.match(/([A-Za-z]{2,}[A-Za-z0-9_-]*)$/)
+  if (tokenMatch && tokenMatch[1]) {
+    return tokenMatch[1].trim()
+  }
+
+  return rawText
 }
 
 export default {
   data() {
     return {
       scooters: [],
-      plans: [],
       selectedScooterId: null,
-      searchScooterId: '',
-      selectedPeriod: '',
-      selectedPlan: null,
+      manualCode: '',
       scooterLoading: true,
-      planLoading: true,
-      submitting: false,
-      bookingStep: 'select',
+      routeLoading: false,
+      startingRide: false,
+      scanning: false,
+      routeInfo: null,
+      routePolylines: [],
       mapCenter: { ...DEFAULT_CENTER },
       mapScale: 16,
       topbarTop: '56px',
-      topbarWidth: '280px',
-      countPillTop: '156px'
+      topbarWidth: '280px'
     }
   },
   computed: {
@@ -219,12 +193,6 @@ export default {
     fullscreenMapScale() {
       return Math.max(this.mapScale, 16)
     },
-    canSubmit() {
-      return !!this.selectedScooter && !!this.selectedPlan && !this.submitting
-    },
-    canUseSelectedScooter() {
-      return !!this.selectedScooter && this.selectedScooter.status === 'AVAILABLE'
-    },
     bookingTopbarStyle() {
       return {
         top: this.topbarTop
@@ -235,18 +203,21 @@ export default {
         width: this.topbarWidth
       }
     },
-    bookingCountPillStyle() {
-      return {
-        top: this.countPillTop
-      }
+    selectedRideCode() {
+      return this.selectedScooter?.scooterCode || parseScooterCode(this.manualCode)
+    },
+    canStartRide() {
+      return !!this.selectedRideCode && !this.startingRide
+    },
+    startRideLabel() {
+      return this.selectedScooter
+        ? `Ride ${this.selectedScooter.scooterCode}`
+        : (this.manualCode ? 'Ride with Code' : 'Select or Type a Scooter')
     }
   },
-  onLoad(options) {
+  onLoad() {
     this.initTopLayout()
-    if (options.period) {
-      this.selectedPeriod = options.period
-    }
-    this.loadPageData()
+    this.loadScooters()
   },
   methods: {
     initTopLayout() {
@@ -277,10 +248,7 @@ export default {
           if (menuButtonRect && typeof menuButtonRect.bottom === 'number') {
             top = Math.max(top, menuButtonRect.bottom + 12)
           }
-          if (
-            menuButtonRect
-            && typeof menuButtonRect.left === 'number'
-          ) {
+          if (menuButtonRect && typeof menuButtonRect.left === 'number') {
             rightLimit = Math.min(rightLimit, menuButtonRect.left - 12)
           }
         }
@@ -293,15 +261,11 @@ export default {
         const maxScreenWidth = windowWidth - (screenPadding * 2)
         width = Math.min(maxScreenWidth, maxCenteredWidth)
       } catch (e) {
-        // Keep the fallback spacing if platform metrics are unavailable.
+        // Fallback dimensions are enough if platform metrics are unavailable.
       }
 
       this.topbarTop = `${top}px`
       this.topbarWidth = `${width}px`
-      this.countPillTop = `${top + 94}px`
-    },
-    async loadPageData() {
-      await Promise.all([this.loadScooters(), this.loadPlans()])
     },
     async loadScooters() {
       this.scooterLoading = true
@@ -313,20 +277,6 @@ export default {
         this.scooters = []
       } finally {
         this.scooterLoading = false
-      }
-    },
-    async loadPlans() {
-      this.planLoading = true
-      try {
-        const res = await getPricingPlans()
-        this.plans = sortPricingPlans(res.data || [])
-        if (this.selectedPeriod) {
-          this.selectedPlan = this.plans.find(plan => plan.hirePeriod === this.selectedPeriod) || null
-        }
-      } catch (e) {
-        this.plans = []
-      } finally {
-        this.planLoading = false
       }
     },
     hasCoordinates(scooter) {
@@ -343,13 +293,11 @@ export default {
         return
       }
 
-      this.mapCenter = {
-        latitude: Number(focusScooter.latitude),
-        longitude: Number(focusScooter.longitude)
-      }
+      this.selectScooter(focusScooter)
     },
     selectScooter(scooter) {
       this.selectedScooterId = scooter.id
+      this.clearRoutePreview()
       if (this.hasCoordinates(scooter)) {
         this.mapCenter = {
           latitude: Number(scooter.latitude),
@@ -357,6 +305,10 @@ export default {
         }
         this.mapScale = 18
       }
+    },
+    clearRoutePreview() {
+      this.routeInfo = null
+      this.routePolylines = []
     },
     handleMarkerTap(event) {
       const scooter = this.scooters.find(item => Number(item.id) === Number(event.detail.markerId))
@@ -371,87 +323,146 @@ export default {
       }
       uni.switchTab({ url: '/pages/index/index' })
     },
-    handleSearchScooter() {
-      const keyword = String(this.searchScooterId || '').trim()
-      if (!keyword) {
-        uni.showToast({ title: 'Please enter a scooter ID', icon: 'none' })
+    handleFindScooter() {
+      const code = parseScooterCode(this.manualCode)
+      if (!code) {
+        uni.showToast({ title: 'Please enter a scooter code', icon: 'none' })
         return
       }
 
-      const scooter = this.scooters.find(item => String(item.id) === keyword)
-      if (!scooter) {
-        uni.showToast({ title: 'Scooter not found', icon: 'none' })
+      this.manualCode = code
+      const scooter = this.scooters.find(item => String(item.scooterCode || '').toUpperCase() === code.toUpperCase())
+      if (scooter) {
+        this.selectScooter(scooter)
         return
       }
 
-      this.bookingStep = 'select'
-      this.selectScooter(scooter)
+      uni.showToast({ title: 'Scooter not on the public map list. You can still try Ride with Code.', icon: 'none' })
     },
-    handleUseScooter() {
+    ensureLoggedIn() {
+      if (getToken()) {
+        return true
+      }
+      uni.navigateTo({ url: '/pages/login/login' })
+      return false
+    },
+    async getCurrentLocation() {
+      return new Promise((resolve, reject) => {
+        uni.getLocation({
+          type: 'gcj02',
+          success: resolve,
+          fail: reject
+        })
+      })
+    },
+    async handlePreviewRoute() {
       if (!this.selectedScooter) {
-        uni.showToast({ title: 'Please choose a scooter', icon: 'none' })
+        uni.showToast({ title: 'Please choose a scooter on the map', icon: 'none' })
         return
       }
-      if (!this.canUseSelectedScooter) {
-        uni.showToast({ title: 'This scooter is unavailable', icon: 'none' })
+      if (!this.ensureLoggedIn()) {
         return
       }
-      this.bookingStep = 'order'
-    },
-    handleChangeScooter() {
-      this.bookingStep = 'select'
-    },
-    selectPlan(plan) {
-      this.selectedPeriod = plan.hirePeriod
-      this.selectedPlan = plan
-    },
-    formatPeriod(period) {
-      return formatPeriod(period)
-    },
-    formatCurrency(value) {
-      return formatCurrency(value)
-    },
-    async goToCreatedBookingDetail() {
+
+      this.routeLoading = true
       try {
-        const ordersRes = await getMyOrders()
-        const latestOrder = (ordersRes.data || [])[0]
-        if (latestOrder && latestOrder.id != null) {
-          uni.redirectTo({
-            url: `/pages/order-detail/order-detail?bookingId=${latestOrder.id}`
-          })
-          return
+        const location = await this.getCurrentLocation()
+        const res = await getScooterRoute(
+          this.selectedScooter.id,
+          location.longitude,
+          location.latitude
+        )
+        const route = res.data
+        this.routeInfo = route
+        this.routePolylines = [{
+          points: (route.points || []).map(point => ({
+            latitude: Number(point.latitude),
+            longitude: Number(point.longitude)
+          })),
+          color: '#5d8c22',
+          width: 6,
+          arrowLine: true
+        }]
+      } catch (e) {
+        this.clearRoutePreview()
+        if (e && e.errMsg) {
+          uni.showToast({ title: 'Location permission is required for route preview', icon: 'none' })
         }
-      } catch (e) {
-        // Fall back to the orders tab if the latest booking cannot be resolved.
-      }
-
-      uni.switchTab({ url: '/pages/orders/orders' })
-    },
-    async handleBook() {
-      if (!this.selectedScooter) {
-        uni.showToast({ title: 'Please choose a scooter', icon: 'none' })
-        return
-      }
-      if (!this.selectedPlan) {
-        uni.showToast({ title: 'Please select a plan', icon: 'none' })
-        return
-      }
-      if (this.submitting) {
-        return
-      }
-
-      this.submitting = true
-      try {
-        await createBooking(this.selectedScooter.id, this.selectedPlan.hirePeriod)
-        uni.showToast({ title: 'Booking pending', icon: 'success' })
-        setTimeout(() => {
-          this.goToCreatedBookingDetail()
-        }, 700)
-      } catch (e) {
-        // error toast handled by request.js
       } finally {
-        this.submitting = false
+        this.routeLoading = false
       }
+    },
+    async startRideWithCode(code) {
+      if (!code) {
+        uni.showToast({ title: 'Please select or enter a scooter code', icon: 'none' })
+        return
+      }
+      if (!this.ensureLoggedIn()) {
+        return
+      }
+      if (this.startingRide) {
+        return
+      }
+
+      this.startingRide = true
+      try {
+        const res = await startScanRide(code)
+        uni.showToast({ title: 'Ride started', icon: 'success' })
+        setTimeout(() => {
+          uni.redirectTo({
+            url: `/pages/order-detail/order-detail?bookingId=${res.data.id}`
+          })
+        }, 500)
+      } catch (e) {
+        // request.js handles backend errors
+      } finally {
+        this.startingRide = false
+      }
+    },
+    handleStartRide() {
+      this.startRideWithCode(this.selectedRideCode)
+    },
+    handleScanCode() {
+      if (!this.ensureLoggedIn()) {
+        return
+      }
+      if (this.scanning) {
+        return
+      }
+
+      this.scanning = true
+      uni.scanCode({
+        success: ({ result }) => {
+          const scooterCode = parseScooterCode(result)
+          this.manualCode = scooterCode
+          if (!scooterCode) {
+            uni.showToast({ title: 'Could not parse a scooter code from the QR result', icon: 'none' })
+            return
+          }
+          this.handleFindScooter()
+          this.startRideWithCode(scooterCode)
+        },
+        fail: () => {
+          uni.showToast({ title: 'QR scan cancelled', icon: 'none' })
+        },
+        complete: () => {
+          this.scanning = false
+        }
+      })
+    },
+    formatDistance(distanceMeters) {
+      const distance = Number(distanceMeters || 0)
+      if (distance >= 1000) {
+        return `${(distance / 1000).toFixed(1)} km`
+      }
+      return `${Math.round(distance)} m`
+    },
+    formatDuration(durationSeconds) {
+      const duration = Number(durationSeconds || 0)
+      if (duration >= 3600) {
+        return `${Math.ceil(duration / 3600)} hr`
+      }
+      return `${Math.ceil(duration / 60)} min`
     }
   }
 }
@@ -533,20 +544,6 @@ export default {
   text-align: center;
 }
 
-.booking-count-pill {
-  position: absolute;
-  top: calc(156rpx + env(safe-area-inset-top));
-  left: 24rpx;
-  padding: 0 24rpx;
-  height: 64rpx;
-  border-radius: 32rpx;
-  background: rgba(255, 255, 255, 0.94);
-  color: #24311f;
-  font-size: 24rpx;
-  font-weight: 700;
-  line-height: 64rpx;
-}
-
 .booking-bottom-sheet {
   position: absolute;
   left: 24rpx;
@@ -581,31 +578,28 @@ export default {
 }
 
 .sheet-info-card,
-.sheet-order-card {
+.sheet-note-card {
   margin-top: 22rpx;
   padding: 22rpx 22rpx 10rpx;
   border-radius: 24rpx;
   background: #f7f8f5;
 }
 
-.sheet-info-row,
-.sheet-order-row {
+.sheet-info-row {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   padding-bottom: 14rpx;
 }
 
-.sheet-info-label,
-.sheet-order-label {
+.sheet-info-label {
   width: 180rpx;
   color: #98a093;
   font-size: 22rpx;
   line-height: 1.5;
 }
 
-.sheet-info-value,
-.sheet-order-value {
+.sheet-info-value {
   flex: 1;
   min-width: 0;
   color: #111111;
@@ -614,43 +608,10 @@ export default {
   text-align: right;
 }
 
-.sheet-order-price {
-  color: #5d8c22;
-  font-weight: 700;
-}
-
-.sheet-plan-list {
-  margin-top: 20rpx;
-}
-
-.sheet-plan-option {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 12rpx;
-  padding: 20rpx 22rpx;
-  border-radius: 24rpx;
-  background: #f7f8f5;
-  border: 2rpx solid #f7f8f5;
-}
-
-.sheet-plan-option-active {
-  background: #f7fbeb;
-  border-color: #d8ef8c;
-}
-
-.sheet-plan-name {
-  color: #111111;
-  font-size: 26rpx;
-  font-weight: 600;
-  line-height: 1.4;
-}
-
-.sheet-plan-price {
-  color: #5d8c22;
-  font-size: 26rpx;
-  font-weight: 700;
-  line-height: 1.4;
+.sheet-note-line {
+  padding-bottom: 12rpx;
+  color: #6f776a;
+  font-size: 24rpx;
 }
 
 .sheet-actions {

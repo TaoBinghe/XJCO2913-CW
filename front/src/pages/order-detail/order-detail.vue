@@ -30,16 +30,20 @@
             <text class="info-value">#{{ order.id }}</text>
           </view>
           <view class="info-row">
-            <text class="info-label">Scooter</text>
-            <text class="info-value">{{ order.scooterCode }}</text>
+            <text class="info-label">Flow</text>
+            <text class="info-value">{{ order.rentalTypeLabel }}</text>
+          </view>
+          <view class="info-row">
+            <text class="info-label">{{ order.rentalType === 'STORE_PICKUP' ? 'Store' : 'Scooter' }}</text>
+            <text class="info-value">{{ order.displayTitle }}</text>
           </view>
           <view class="info-row">
             <text class="info-label">Location</text>
-            <text class="info-value">{{ order.scooterLocation }}</text>
+            <text class="info-value">{{ order.displayLocation }}</text>
           </view>
           <view class="info-row">
             <text class="info-label">Hire Period</text>
-            <text class="info-value">{{ order.hiredPeriodLabel }}</text>
+            <text class="info-value">{{ order.hirePeriodLabel }}</text>
           </view>
           <view class="info-row">
             <text class="info-label">Start Time</text>
@@ -48,6 +52,34 @@
           <view class="info-row">
             <text class="info-label">End Time</text>
             <text class="info-value">{{ formatTime(order.endTime) }}</text>
+          </view>
+          <view v-if="order.pickupDeadline" class="info-row">
+            <text class="info-label">Pickup Deadline</text>
+            <text class="info-value">{{ formatTime(order.pickupDeadline) }}</text>
+          </view>
+          <view v-if="order.pickupTime" class="info-row">
+            <text class="info-label">Pickup Time</text>
+            <text class="info-value">{{ formatTime(order.pickupTime) }}</text>
+          </view>
+          <view v-if="order.returnTime" class="info-row">
+            <text class="info-label">Return Time</text>
+            <text class="info-value">{{ formatTime(order.returnTime) }}</text>
+          </view>
+          <view v-if="order.scooterCode" class="info-row">
+            <text class="info-label">Scooter Code</text>
+            <text class="info-value">{{ order.scooterCode }}</text>
+          </view>
+          <view v-if="order.lockStatus" class="info-row">
+            <text class="info-label">Lock Status</text>
+            <text class="info-value">{{ order.lockStatus }}</text>
+          </view>
+          <view v-if="order.returnLocation" class="info-row">
+            <text class="info-label">Return Location</text>
+            <text class="info-value">{{ order.returnLocation }}</text>
+          </view>
+          <view v-if="order.overdueCostValue > 0" class="info-row">
+            <text class="info-label">Overdue Cost</text>
+            <text class="info-value info-value-strong">{{ formatCurrency(order.overdueCostValue) }}</text>
           </view>
           <view class="info-row">
             <text class="info-label">Total Cost</text>
@@ -90,24 +122,46 @@
           <text class="receipt-missing-copy">This order is completed, but this device does not have the original payment receipt cached.</text>
         </view>
 
-        <view v-if="order.status === 'PENDING'" class="action-buttons">
-          <button class="btn-primary action-button" :loading="activating" @click="handleActivate">
-            Activate Ride
+        <view v-if="hasActions" class="action-buttons">
+          <button
+            v-if="canPickup"
+            class="btn-primary action-button"
+            :loading="pickupLoading"
+            @click="handlePickup"
+          >
+            Pick Up Scooter
           </button>
-          <button class="btn-outline action-button" :loading="updatingPeriod" @click="openPlanSelector('modify')">
-            Change Hire Period
+          <button
+            v-if="canCancel"
+            class="btn-danger action-button"
+            :loading="cancelling"
+            @click="handleCancel"
+          >
+            Cancel Reservation
           </button>
-          <button class="btn-danger action-button" :loading="cancelling" @click="handleCancel">
-            Cancel Order
+          <button
+            v-if="canUnlock"
+            class="btn-outline action-button"
+            :loading="unlocking"
+            @click="handleUnlock"
+          >
+            Unlock Scooter
           </button>
-        </view>
-
-        <view v-else-if="order.status === 'ACTIVE'" class="action-buttons">
-          <button class="btn-outline action-button" :loading="updatingPeriod" @click="openPlanSelector('renew')">
-            Extend Ride
+          <button
+            v-if="canLock"
+            class="btn-outline action-button"
+            :loading="locking"
+            @click="handleLock"
+          >
+            Lock Scooter
           </button>
-          <button class="btn-primary action-button" :loading="finishing" @click="handleFinish">
-            Finish and Pay
+          <button
+            v-if="canReturn"
+            class="btn-primary action-button"
+            :loading="returning"
+            @click="handleReturn"
+          >
+            Return and Settle
           </button>
         </view>
       </view>
@@ -117,22 +171,19 @@
 
 <script>
 import {
-  activateBooking,
-  cancelBooking,
-  finishBooking,
-  getPricingPlans,
-  modifyBookingPeriod,
-  renewBooking
+  cancelStoreBooking,
+  getPickupScooters,
+  lockBooking,
+  pickupStoreBooking,
+  returnScanRide,
+  returnStoreBooking,
+  unlockBooking
 } from '@/api/booking'
-import { getScooterList } from '@/api/scooter'
 import { getMyOrders } from '@/api/user'
 import {
   buildBookingViewModel,
-  buildEntityMap,
   formatCurrency,
-  formatPeriod,
-  formatTime,
-  sortPricingPlans
+  formatTime
 } from '@/utils/booking'
 import { getPaymentReceipt, savePaymentReceipt } from '@/utils/payment-receipts'
 import { getToken } from '@/utils/auth'
@@ -142,53 +193,80 @@ export default {
     return {
       bookingId: '',
       order: null,
-      pricingPlans: [],
-      pricingPlanMap: {},
-      scooterMap: {},
       paymentReceipt: null,
       loading: true,
-      activating: false,
       cancelling: false,
-      updatingPeriod: false,
-      finishing: false
+      pickupLoading: false,
+      locking: false,
+      unlocking: false,
+      returning: false
     }
   },
   computed: {
     statusTone() {
-      if (!this.order) return 'pending'
+      if (!this.order) return 'reserved'
 
       const map = {
-        PENDING: 'pending',
-        ACTIVE: 'active',
+        RESERVED: 'reserved',
+        IN_PROGRESS: 'active',
+        OVERDUE: 'overdue',
         COMPLETED: 'completed',
-        CANCELLED: 'cancelled'
+        CANCELLED: 'cancelled',
+        NO_SHOW_CANCELLED: 'cancelled'
       }
-      return map[this.order.status] || 'pending'
+      return map[this.order.status] || 'cancelled'
     },
     statusShort() {
       const map = {
-        pending: 'P',
+        reserved: 'R',
         active: 'A',
+        overdue: 'O',
         completed: 'C',
         cancelled: 'X'
       }
-      return map[this.statusTone] || 'P'
+      return map[this.statusTone] || 'R'
     },
     statusDesc() {
       if (!this.order) return ''
 
       const map = {
-        PENDING: 'Your scooter is reserved. Activate it when you are ready, update the hire period, or cancel before the ride starts.',
-        ACTIVE: 'Your ride is in progress. Extend the booking if you need more time, or finish the order to complete payment.',
+        RESERVED: this.order.rentalType === 'STORE_PICKUP'
+          ? 'Your reservation is active. Cancel it, or pick up a scooter once the pickup window opens.'
+          : 'This scan ride has not started yet.',
+        IN_PROGRESS: 'Your ride is live. Lock or unlock the scooter as needed, then return it to settle the order.',
+        OVERDUE: 'This ride has passed the planned end time. Return it as soon as possible to complete settlement.',
         COMPLETED: this.paymentReceipt
           ? 'This ride is closed and the payment receipt is stored on this device.'
           : 'This ride is closed. The order is still valid, but this device does not have the original payment receipt cached.',
-        CANCELLED: 'This booking was cancelled before the ride started.'
+        CANCELLED: 'This reservation was cancelled before the ride started.',
+        NO_SHOW_CANCELLED: 'The reservation expired because pickup never happened before the deadline.'
       }
       return map[this.order.status] || ''
     },
     paymentUnavailable() {
       return !!this.order && this.order.status === 'COMPLETED' && !this.paymentReceipt
+    },
+    canCancel() {
+      return !!this.order && this.order.rentalType === 'STORE_PICKUP' && this.order.status === 'RESERVED'
+    },
+    canPickup() {
+      return !!this.order && this.order.rentalType === 'STORE_PICKUP' && this.order.status === 'RESERVED'
+    },
+    canLock() {
+      return !!this.order
+        && (this.order.status === 'IN_PROGRESS' || this.order.status === 'OVERDUE')
+        && this.order.lockStatus !== 'LOCKED'
+    },
+    canUnlock() {
+      return !!this.order
+        && (this.order.status === 'IN_PROGRESS' || this.order.status === 'OVERDUE')
+        && this.order.lockStatus !== 'UNLOCKED'
+    },
+    canReturn() {
+      return !!this.order && (this.order.status === 'IN_PROGRESS' || this.order.status === 'OVERDUE')
+    },
+    hasActions() {
+      return this.canCancel || this.canPickup || this.canLock || this.canUnlock || this.canReturn
     }
   },
   onLoad(options) {
@@ -211,18 +289,9 @@ export default {
 
       this.loading = true
       try {
-        const [ordersRes, scootersRes, pricingPlansRes] = await Promise.all([
-          getMyOrders(),
-          getScooterList(),
-          getPricingPlans()
-        ])
-
-        this.pricingPlans = sortPricingPlans(pricingPlansRes.data || [])
-        this.pricingPlanMap = buildEntityMap(this.pricingPlans)
-        this.scooterMap = buildEntityMap(scootersRes.data || [])
-
+        const ordersRes = await getMyOrders()
         const booking = (ordersRes.data || []).find(item => String(item.id) === String(this.bookingId))
-        this.order = booking ? buildBookingViewModel(booking, this.scooterMap, this.pricingPlanMap) : null
+        this.order = booking ? buildBookingViewModel(booking) : null
         this.paymentReceipt = this.order && this.order.status === 'COMPLETED'
           ? getPaymentReceipt(this.order.id)
           : null
@@ -234,13 +303,35 @@ export default {
       }
     },
     applyBookingUpdate(booking) {
-      this.order = buildBookingViewModel(booking, this.scooterMap, this.pricingPlanMap)
+      this.order = buildBookingViewModel(booking)
+      this.paymentReceipt = this.order && this.order.status === 'COMPLETED'
+        ? getPaymentReceipt(this.order.id)
+        : this.paymentReceipt
+    },
+    applySettlementResult(result) {
+      if (!result) return
+      if (result.booking) {
+        this.applyBookingUpdate(result.booking)
+      }
+      if (result.payment) {
+        savePaymentReceipt(this.order.id, result.payment)
+        this.paymentReceipt = result.payment
+      }
     },
     formatTime(timeStr) {
       return formatTime(timeStr)
     },
     formatCurrency(value) {
       return formatCurrency(value)
+    },
+    async getCurrentLocation() {
+      return new Promise((resolve, reject) => {
+        uni.getLocation({
+          type: 'gcj02',
+          success: resolve,
+          fail: reject
+        })
+      })
     },
     async confirmAction(title, content, confirmColor = '#5d8c22') {
       return new Promise((resolve) => {
@@ -255,98 +346,123 @@ export default {
         })
       })
     },
-    async handleActivate() {
-      if (!this.order) return
-
-      this.activating = true
-      try {
-        await activateBooking(this.order.id)
-        uni.showToast({ title: 'Ride activated', icon: 'success' })
-        await this.loadDetail()
-      } catch (e) {
-        // error toast handled by request.js
-      } finally {
-        this.activating = false
-      }
-    },
     async handleCancel() {
       if (!this.order) return
 
       const confirmed = await this.confirmAction(
-        'Cancel order',
-        'This will release the scooter and close the pending booking.',
+        'Cancel reservation',
+        'This will release the reservation before pickup happens.',
         '#c85c55'
       )
       if (!confirmed) return
 
       this.cancelling = true
       try {
-        const res = await cancelBooking(this.order.id)
+        const res = await cancelStoreBooking(this.order.id)
         this.applyBookingUpdate(res.data)
-        uni.showToast({ title: 'Order cancelled', icon: 'success' })
+        uni.showToast({ title: 'Reservation cancelled', icon: 'success' })
       } catch (e) {
-        // error toast handled by request.js
+        // request.js handles backend errors
       } finally {
         this.cancelling = false
       }
     },
-    openPlanSelector(mode) {
-      if (!this.pricingPlans.length) {
-        uni.showToast({ title: 'Pricing plans unavailable', icon: 'none' })
-        return
-      }
+    async handlePickup() {
+      if (!this.order) return
 
-      uni.showActionSheet({
-        itemList: this.pricingPlans.map(plan => `${formatPeriod(plan.hirePeriod)} · ${formatCurrency(plan.price)}`),
-        success: ({ tapIndex }) => {
-          const plan = this.pricingPlans[tapIndex]
-          if (plan) {
-            this.applyPlanSelection(mode, plan)
-          }
-        }
-      })
-    },
-    async applyPlanSelection(mode, plan) {
-      if (!this.order || !plan) return
-
-      this.updatingPeriod = true
+      this.pickupLoading = true
       try {
-        const res = mode === 'modify'
-          ? await modifyBookingPeriod(this.order.id, plan.hirePeriod)
-          : await renewBooking(this.order.id, plan.hirePeriod)
+        const res = await getPickupScooters(this.order.id)
+        const scooters = res.data || []
+        if (!scooters.length) {
+          uni.showToast({ title: 'No pickup scooters are available right now', icon: 'none' })
+          return
+        }
 
-        this.applyBookingUpdate(res.data)
-        uni.showToast({
-          title: mode === 'modify' ? 'Hire period updated' : 'Ride extended',
-          icon: 'success'
+        uni.showActionSheet({
+          itemList: scooters.map(scooter => `${scooter.scooterCode} · ${scooter.status}`),
+          success: async ({ tapIndex }) => {
+            const scooter = scooters[tapIndex]
+            if (!scooter) return
+
+            this.pickupLoading = true
+            try {
+              const pickupRes = await pickupStoreBooking(this.order.id, scooter.id)
+              this.applyBookingUpdate(pickupRes.data)
+              uni.showToast({ title: 'Scooter picked up', icon: 'success' })
+            } catch (e) {
+              // request.js handles backend errors
+            } finally {
+              this.pickupLoading = false
+            }
+          },
+          fail: () => {
+            this.pickupLoading = false
+          }
         })
       } catch (e) {
-        // error toast handled by request.js
+        // request.js handles backend errors
       } finally {
-        this.updatingPeriod = false
+        this.pickupLoading = false
       }
     },
-    async handleFinish() {
+    async handleLock() {
+      if (!this.order) return
+
+      this.locking = true
+      try {
+        const res = await lockBooking(this.order.id)
+        this.applyBookingUpdate(res.data)
+        uni.showToast({ title: 'Scooter locked', icon: 'success' })
+      } catch (e) {
+        // request.js handles backend errors
+      } finally {
+        this.locking = false
+      }
+    },
+    async handleUnlock() {
+      if (!this.order) return
+
+      this.unlocking = true
+      try {
+        const res = await unlockBooking(this.order.id)
+        this.applyBookingUpdate(res.data)
+        uni.showToast({ title: 'Scooter unlocked', icon: 'success' })
+      } catch (e) {
+        // request.js handles backend errors
+      } finally {
+        this.unlocking = false
+      }
+    },
+    async returnScanRideWithLocation() {
+      const location = await this.getCurrentLocation()
+      return returnScanRide(this.order.id, location.longitude, location.latitude)
+    },
+    async handleReturn() {
       if (!this.order) return
 
       const confirmed = await this.confirmAction(
-        'Finish ride',
-        'This will end the active order and complete payment.',
+        'Return scooter',
+        this.order.rentalType === 'SCAN_RIDE'
+          ? 'This will upload your current coordinates, return the scooter, and settle the order.'
+          : 'This will return the store pickup scooter and settle the order.',
         '#5d8c22'
       )
       if (!confirmed) return
 
-      this.finishing = true
+      this.returning = true
       try {
-        const res = await finishBooking(this.order.id)
-        this.applyBookingUpdate(res.data.booking)
-        savePaymentReceipt(this.order.id, res.data.payment)
-        this.paymentReceipt = res.data.payment
+        const res = this.order.rentalType === 'SCAN_RIDE'
+          ? await this.returnScanRideWithLocation()
+          : await returnStoreBooking(this.order.id)
+        this.applySettlementResult(res.data)
         uni.showToast({ title: 'Ride completed', icon: 'success' })
       } catch (e) {
-        // error toast handled by request.js
+        if (e && e.errMsg) {
+          uni.showToast({ title: 'Location permission is required to return a scan ride', icon: 'none' })
+        }
       } finally {
-        this.finishing = false
+        this.returning = false
       }
     },
     goBackToOrders() {
@@ -381,7 +497,7 @@ export default {
   font-weight: 700;
 }
 
-.status-marker-pending {
+.status-marker-reserved {
   background: #fff5db;
   color: #b98224;
 }
@@ -389,6 +505,11 @@ export default {
 .status-marker-active {
   background: #effad7;
   color: #5d8c22;
+}
+
+.status-marker-overdue {
+  background: #fff4df;
+  color: #c67a10;
 }
 
 .status-marker-completed {
