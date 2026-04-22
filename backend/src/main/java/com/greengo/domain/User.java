@@ -10,6 +10,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
@@ -41,6 +42,8 @@ public class User {
 
     // Status: 0-disabled, 1-enabled
     private Integer status;
+
+    private BigDecimal walletBalance;
 
     private LocalDateTime createdAt;
 
