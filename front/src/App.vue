@@ -1,12 +1,19 @@
 <script>
 const DEFAULT_WX_CLOUD_ENV_ID = 'prod-4g7i1ww2f71d4f7b'
 const WX_CLOUD_ENV_ID = (import.meta.env.VITE_WX_CLOUD_ENV_ID || DEFAULT_WX_CLOUD_ENV_ID).trim()
+const MP_WEIXIN_REQUEST_MODE = (import.meta.env.VITE_MP_WEIXIN_REQUEST_MODE || 'cloud').trim().toLowerCase()
+const BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').trim()
 
 export default {
   onLaunch() {
     console.log('App Launch')
 
     // #ifdef MP-WEIXIN
+    if (MP_WEIXIN_REQUEST_MODE === 'http') {
+      console.log(`mp-weixin local HTTP mode enabled: ${BASE_URL || '(missing VITE_API_BASE_URL)'}`)
+      return
+    }
+
     if (!WX_CLOUD_ENV_ID) {
       console.error('VITE_WX_CLOUD_ENV_ID is not configured for mp-weixin')
       uni.showToast({ title: 'Cloud env not configured', icon: 'none' })
@@ -262,7 +269,17 @@ image {
   color: #b98224;
 }
 
+.status-reserved {
+  background: #fff5db;
+  color: #b98224;
+}
+
 .status-active {
+  background: #effad7;
+  color: #5d8c22;
+}
+
+.status-in_progress {
   background: #effad7;
   color: #5d8c22;
 }
@@ -270,6 +287,11 @@ image {
 .status-activated {
   background: #effad7;
   color: #5d8c22;
+}
+
+.status-overdue {
+  background: #fff0d9;
+  color: #b96d17;
 }
 
 .status-completed {
@@ -282,9 +304,29 @@ image {
   color: #c85c55;
 }
 
+.status-no_show_cancelled {
+  background: #fff0ed;
+  color: #c85c55;
+}
+
 .status-available {
   background: #effad7;
   color: #5d8c22;
+}
+
+.status-in_use {
+  background: #e8f1ff;
+  color: #2463d6;
+}
+
+.status-maintenance {
+  background: #fff4df;
+  color: #c67a10;
+}
+
+.status-disabled {
+  background: #f2f4ef;
+  color: #7d8677;
 }
 
 .status-unavailable {

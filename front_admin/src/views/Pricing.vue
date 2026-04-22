@@ -3,7 +3,7 @@
     <div class="page-header">
       <div>
         <h2 class="page-heading">Pricing Plan Management</h2>
-        <p class="page-copy">Create fixed or custom hire periods and maintain their prices.</p>
+        <p class="page-copy">Create Sprint 3 reservation and scan-ride pricing plans, including minute-based periods.</p>
       </div>
       <div class="header-actions">
         <el-button :loading="loading" @click="loadPlans">
@@ -38,7 +38,7 @@
         <div class="table-header">
           <div>
             <div class="card-title">All Pricing Plans</div>
-            <div class="card-note">Backend uniqueness and price validation remain the source of truth.</div>
+            <div class="card-note">Backend uniqueness and price validation remain the source of truth for both reservation and scan-ride plans.</div>
           </div>
         </div>
       </template>

@@ -31,6 +31,11 @@
           <template #title>Scooter Management</template>
         </el-menu-item>
 
+        <el-menu-item index="/stores">
+          <el-icon><Shop /></el-icon>
+          <template #title>Store Management</template>
+        </el-menu-item>
+
         <el-menu-item index="/users">
           <el-icon><User /></el-icon>
           <template #title>User Management</template>

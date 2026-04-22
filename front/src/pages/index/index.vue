@@ -9,21 +9,30 @@
         <text class="theme-headline">Ride Light Through the City</text>
       </view>
 
-      <view class="card home-cta-card" @click="goBooking">
-        <view class="home-cta-copy">
-          <text class="home-cta-title">Start a Ride</text>
-          <text class="home-cta-desc">Book a scooter in a few taps and get moving right away.</text>
+      <view class="ride-flow-grid">
+        <view class="card home-cta-card" @click="goStoreBooking">
+          <view class="home-cta-copy">
+            <text class="home-cta-title">Reserve at a Store</text>
+            <text class="home-cta-desc">Pick a time window, compare inventory, and collect your scooter in person.</text>
+          </view>
+        </view>
+
+        <view class="card home-cta-card" @click="goScanRide">
+          <view class="home-cta-copy">
+            <text class="home-cta-title">Scan to Ride</text>
+            <text class="home-cta-desc">Browse the live map, preview the walking route, then scan or type a scooter code.</text>
+          </view>
         </view>
       </view>
 
       <view class="theme-section-head">
         <view>
-          <text class="section-title">Pricing Plans</text>
+          <text class="section-title">Reservation Pricing</text>
         </view>
       </view>
 
       <view v-if="loading" class="card loading-card">
-        <text>Loading plans...</text>
+        <text>Loading reservation plans...</text>
       </view>
 
       <view v-else-if="plans.length" class="plan-grid">
@@ -31,7 +40,7 @@
           v-for="plan in plans"
           :key="plan.id"
           class="card plan-card"
-          @click="goBookingWithPlan(plan)"
+          @click="goStoreBookingWithPlan(plan)"
         >
           <view class="plan-badge">{{ formatPeriodBadge(plan.hirePeriod) }}</view>
           <text class="plan-price">{{ formatCurrency(plan.price) }}</text>
@@ -40,13 +49,13 @@
       </view>
 
       <view v-else class="card pricing-empty-card">
-        <text class="pricing-empty-title">Sign in to view live pricing</text>
-        <text class="pricing-empty-copy">Sprint 2 pricing plans come from your account-backed booking API, so we only load the latest prices after login.</text>
+        <text class="pricing-empty-title">Sign in to view live reservation pricing</text>
+        <text class="pricing-empty-copy">Store reservations use account-backed pricing plans, so we load the latest plans after login.</text>
       </view>
 
       <view v-if="!isLoggedIn" class="card login-card" @click="goLogin">
-        <text class="login-card-title">Log in to make a booking</text>
-        <text class="login-card-desc">Save your ride details, activation, and payment in one place.</text>
+        <text class="login-card-title">Log in to reserve and ride</text>
+        <text class="login-card-desc">Guest users can browse stores and scan scooters, while signed-in users can reserve, unlock, and settle orders.</text>
       </view>
 
       <view class="home-illustration-block">
@@ -57,7 +66,9 @@
 </template>
 
 <script>
-import { getPricingPlans } from '@/api/booking'
+import { getReservationPricingPlans } from '@/api/booking'
+import { getScooterList } from '@/api/scooter'
+import { getStoreList } from '@/api/store'
 import loginBackground from '@/static/login_background.png'
 import { formatCurrency, formatPeriod, formatPeriodBadge, sortPricingPlans } from '@/utils/booking'
 import { getToken } from '@/utils/auth'
@@ -66,27 +77,47 @@ export default {
   data() {
     return {
       plans: [],
+      stores: [],
+      scooterCount: 0,
       loading: true,
       isLoggedIn: false,
       illustrationSrc: loginBackground
     }
   },
-  onShow() {
-    this.isLoggedIn = !!getToken()
-    if (this.isLoggedIn) {
-      this.loadPlans()
-    } else {
-      this.plans = []
-      this.loading = false
+  computed: {
+    storeCountLabel() {
+      return `${this.stores.length} stores`
+    },
+    scooterCountLabel() {
+      return `${this.scooterCount} live scooters`
+    },
+    publicStoreSummary() {
+      if (!this.stores.length) {
+        return '0'
+      }
+      const bookableCount = this.stores.filter(store => Number(store.bookableInventory || 0) > 0).length
+      return `${bookableCount}/${this.stores.length} with inventory`
     }
   },
+  onShow() {
+    this.isLoggedIn = !!getToken()
+    this.loadHomeData()
+  },
   methods: {
-    async loadPlans() {
+    async loadHomeData() {
       this.loading = true
       try {
-        const res = await getPricingPlans()
-        this.plans = sortPricingPlans(res.data || [])
+        const [storesRes, scootersRes, plansRes] = await Promise.all([
+          getStoreList(),
+          getScooterList(),
+          this.isLoggedIn ? getReservationPricingPlans() : Promise.resolve({ data: [] })
+        ])
+        this.stores = storesRes.data || []
+        this.scooterCount = (scootersRes.data || []).length
+        this.plans = sortPricingPlans(plansRes.data || [])
       } catch (e) {
+        this.stores = []
+        this.scooterCount = 0
         this.plans = []
       } finally {
         this.loading = false
@@ -101,21 +132,16 @@ export default {
     formatCurrency(value) {
       return formatCurrency(value)
     },
-    goBooking() {
-      if (!this.isLoggedIn) {
-        uni.navigateTo({ url: '/pages/login/login' })
-        return
-      }
-      uni.navigateTo({ url: '/pages/booking/booking' })
+    goStoreBooking() {
+      uni.navigateTo({ url: '/pages/store-booking/store-booking' })
     },
-    goBookingWithPlan(plan) {
-      if (!this.isLoggedIn) {
-        uni.navigateTo({ url: '/pages/login/login' })
-        return
-      }
+    goStoreBookingWithPlan(plan) {
       uni.navigateTo({
-        url: `/pages/booking/booking?planId=${plan.id}&period=${plan.hirePeriod}&price=${plan.price}`
+        url: `/pages/store-booking/store-booking?period=${plan.hirePeriod}`
       })
+    },
+    goScanRide() {
+      uni.navigateTo({ url: '/pages/booking/booking' })
     },
     goLogin() {
       uni.navigateTo({ url: '/pages/login/login' })
@@ -125,12 +151,19 @@ export default {
 </script>
 
 <style scoped>
+.ride-flow-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20rpx;
+  margin-top: 38rpx;
+}
+
 .home-cta-card {
   display: flex;
-  align-items: flex-end;
+  flex-direction: column;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 24rpx;
-  margin-top: 38rpx;
   border-width: 3rpx;
   border-color: #d5dfc8;
 }
@@ -155,11 +188,11 @@ export default {
   color: #6f776a;
 }
 
-.home-cta-pill {
+.home-cta-stat {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 128rpx;
+  min-width: 156rpx;
   height: 64rpx;
   padding: 0 26rpx;
   border-radius: 999rpx;
@@ -167,6 +200,33 @@ export default {
   color: #5d8c22;
   font-size: 24rpx;
   font-weight: 700;
+}
+
+.summary-card {
+  margin-top: 0;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20rpx;
+  padding: 12rpx 0;
+}
+
+.summary-row + .summary-row {
+  border-top: 1rpx solid #edf0e8;
+}
+
+.summary-label {
+  font-size: 24rpx;
+  color: #8c9587;
+}
+
+.summary-value {
+  font-size: 24rpx;
+  font-weight: 700;
+  color: #111111;
 }
 
 .loading-card {

@@ -29,6 +29,12 @@ const router = createRouter({
           meta: { title: 'Scooter Management', icon: 'Van' }
         },
         {
+          path: 'stores',
+          name: 'Stores',
+          component: () => import('@/views/Stores.vue'),
+          meta: { title: 'Store Management', icon: 'Shop' }
+        },
+        {
           path: 'users',
           name: 'Users',
           component: () => import('@/views/Users.vue'),

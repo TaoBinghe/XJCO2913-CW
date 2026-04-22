@@ -16,8 +16,8 @@
 
       <view v-else-if="orders.length === 0" class="card empty-state">
         <text class="empty-title">No orders yet</text>
-        <text class="empty-copy">Your bookings will show up here once you start your first ride.</text>
-        <button class="btn-outline empty-btn" @click="goHome">Book a Scooter</button>
+        <text class="empty-copy">Reservations, active rides, and completed trips will show up here once you start riding.</text>
+        <button class="btn-outline empty-btn" @click="goHome">Explore Ride Options</button>
       </view>
 
       <view v-else class="orders-content">
@@ -25,7 +25,7 @@
           <view class="theme-section-head orders-section-head">
             <view>
               <text class="section-title">Current Orders</text>
-              <text class="theme-section-note">Pending and active rides stay here until they close.</text>
+              <text class="theme-section-note">Reserved bookings, active rides, and overdue returns stay here.</text>
             </view>
           </view>
 
@@ -38,8 +38,8 @@
             >
               <view class="order-card-header">
                 <view class="order-header-copy">
-                  <text class="order-id">Order #{{ order.id }}</text>
-                  <text class="order-created">Created {{ formatTime(order.createdAt) }}</text>
+                  <text class="order-id">{{ order.displayTitle }}</text>
+                  <text class="order-created">Order #{{ order.id }} · {{ order.rentalTypeLabel }}</text>
                 </view>
                 <text class="status-badge" :class="'status-' + order.status.toLowerCase()">
                   {{ order.status }}
@@ -48,29 +48,33 @@
 
               <view class="order-details">
                 <view class="order-row">
-                  <text class="order-label">Scooter</text>
-                  <text class="order-value">{{ order.scooterCode }}</text>
+                  <text class="order-label">{{ order.rentalType === 'STORE_PICKUP' ? 'Store' : 'Scooter' }}</text>
+                  <text class="order-value">{{ order.displayTitle }}</text>
                 </view>
                 <view class="order-row">
                   <text class="order-label">Location</text>
-                  <text class="order-value">{{ order.scooterLocation }}</text>
+                  <text class="order-value">{{ order.displayLocation }}</text>
                 </view>
                 <view class="order-row">
                   <text class="order-label">Plan</text>
-                  <text class="order-value">{{ order.hiredPeriodLabel }}</text>
+                  <text class="order-value">{{ order.hirePeriodLabel }}</text>
                 </view>
                 <view class="order-row">
-                  <text class="order-label">Cost</text>
+                  <text class="order-label">{{ order.rentalType === 'STORE_PICKUP' ? 'Pickup Window' : 'Ride Started' }}</text>
+                  <text class="order-value">{{ formatTime(order.rentalType === 'STORE_PICKUP' ? order.startTime : order.pickupTime || order.startTime) }}</text>
+                </view>
+                <view class="order-row">
+                  <text class="order-label">{{ order.status === 'OVERDUE' ? 'Overdue Cost' : 'Current Cost' }}</text>
                   <text class="order-value order-value-strong">{{ formatCurrency(order.totalCostValue) }}</text>
                 </view>
                 <view class="order-row">
-                  <text class="order-label">End</text>
-                  <text class="order-value">{{ formatTime(order.endTime) }}</text>
+                  <text class="order-label">{{ order.rentalType === 'STORE_PICKUP' ? 'Pickup Deadline' : 'Lock Status' }}</text>
+                  <text class="order-value">{{ order.rentalType === 'STORE_PICKUP' ? formatTime(order.pickupDeadline) : (order.lockStatus || '-') }}</text>
                 </view>
               </view>
 
               <view class="order-footer">
-                <text class="order-link">Manage ride</text>
+                <text class="order-link">Manage order</text>
               </view>
             </view>
           </view>
@@ -78,7 +82,6 @@
 
         <view v-if="historyOrders.length" class="orders-section">
           <view class="theme-section-head orders-section-head">
-    
           </view>
 
           <view class="order-list">
@@ -90,8 +93,8 @@
             >
               <view class="order-card-header">
                 <view class="order-header-copy">
-                  <text class="order-id">Order #{{ order.id }}</text>
-                  <text class="order-created">Created {{ formatTime(order.createdAt) }}</text>
+                  <text class="order-id">{{ order.displayTitle }}</text>
+                  <text class="order-created">Order #{{ order.id }} · {{ order.rentalTypeLabel }}</text>
                 </view>
                 <text class="status-badge" :class="'status-' + order.status.toLowerCase()">
                   {{ order.status }}
@@ -100,24 +103,24 @@
 
               <view class="order-details">
                 <view class="order-row">
-                  <text class="order-label">Scooter</text>
-                  <text class="order-value">{{ order.scooterCode }}</text>
+                  <text class="order-label">{{ order.rentalType === 'STORE_PICKUP' ? 'Store' : 'Scooter' }}</text>
+                  <text class="order-value">{{ order.displayTitle }}</text>
                 </view>
                 <view class="order-row">
                   <text class="order-label">Location</text>
-                  <text class="order-value">{{ order.scooterLocation }}</text>
+                  <text class="order-value">{{ order.displayLocation }}</text>
                 </view>
                 <view class="order-row">
                   <text class="order-label">Plan</text>
-                  <text class="order-value">{{ order.hiredPeriodLabel }}</text>
+                  <text class="order-value">{{ order.hirePeriodLabel }}</text>
                 </view>
                 <view class="order-row">
                   <text class="order-label">Paid</text>
                   <text class="order-value order-value-strong">{{ formatCurrency(order.totalCostValue) }}</text>
                 </view>
                 <view class="order-row">
-                  <text class="order-label">Closed</text>
-                  <text class="order-value">{{ formatTime(order.updatedAt || order.endTime) }}</text>
+                  <text class="order-label">{{ order.status === 'NO_SHOW_CANCELLED' ? 'Cancelled At' : 'Closed At' }}</text>
+                  <text class="order-value">{{ formatTime(order.returnTime || order.updatedAt || order.endTime) }}</text>
                 </view>
               </view>
 
@@ -133,16 +136,13 @@
 </template>
 
 <script>
-import { getPricingPlans } from '@/api/booking'
-import { getScooterList } from '@/api/scooter'
 import { getMyOrders } from '@/api/user'
 import {
   buildBookingViewModel,
-  buildEntityMap,
   formatCurrency,
   formatTime,
   isOpenBooking,
-  sortPricingPlans
+  sortBookings
 } from '@/utils/booking'
 import { getToken } from '@/utils/auth'
 
@@ -162,10 +162,10 @@ export default {
     },
     ordersSummary() {
       if (this.loading) {
-        return 'Loading the latest ride states, scooter locations, and pricing references.'
+        return 'Loading the latest reservation and ride states.'
       }
       if (!this.orders.length) {
-        return 'Keep pending rides, active trips, and finished orders in one clean timeline.'
+        return 'Keep store reservations, scan rides, and completed trips in one clean timeline.'
       }
       return ''
     }
@@ -181,15 +181,8 @@ export default {
     async loadOrders() {
       this.loading = true
       try {
-        const [ordersRes, scootersRes, pricingPlansRes] = await Promise.all([
-          getMyOrders(),
-          getScooterList(),
-          getPricingPlans()
-        ])
-
-        const scooterMap = buildEntityMap(scootersRes.data || [])
-        const pricingPlanMap = buildEntityMap(sortPricingPlans(pricingPlansRes.data || []))
-        this.orders = (ordersRes.data || []).map(order => buildBookingViewModel(order, scooterMap, pricingPlanMap))
+        const ordersRes = await getMyOrders()
+        this.orders = sortBookings((ordersRes.data || []).map(order => buildBookingViewModel(order)))
       } catch (e) {
         this.orders = []
       } finally {
