@@ -28,6 +28,14 @@
       </view>
 
       <view class="menu-list">
+        <view class="card menu-card" @click="goWallet">
+          <view class="menu-copy">
+            <text class="menu-title">My Wallet</text>
+            <text class="menu-desc">Manage balance, bind cards, and recharge before your next ride.</text>
+          </view>
+          <text class="menu-pill">Wallet</text>
+        </view>
+
         <view class="card menu-card" @click="goOrders">
           <view class="menu-copy">
             <text class="menu-title">My Orders</text>
@@ -94,6 +102,13 @@ export default {
   methods: {
     goLogin() {
       uni.navigateTo({ url: '/pages/login/login' })
+    },
+    goWallet() {
+      if (!this.isLoggedIn) {
+        uni.navigateTo({ url: '/pages/login/login' })
+        return
+      }
+      uni.navigateTo({ url: '/pages/wallet/wallet' })
     },
     goOrders() {
       if (!this.isLoggedIn) {

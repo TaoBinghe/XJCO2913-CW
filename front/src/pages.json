@@ -19,6 +19,12 @@
 			}
 		},
 		{
+			"path": "pages/wallet/wallet",
+			"style": {
+				"navigationBarTitleText": "My Wallet"
+			}
+		},
+		{
 			"path": "pages/login/login",
 			"style": {
 				"navigationBarTitleText": "Login",
