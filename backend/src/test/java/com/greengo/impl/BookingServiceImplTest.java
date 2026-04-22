@@ -2,7 +2,6 @@ package com.greengo.impl;
 
 import com.greengo.domain.Booking;
 import com.greengo.domain.BookingSettlementResult;
-import com.greengo.domain.Payment;
 import com.greengo.domain.PricingPlan;
 import com.greengo.domain.Scooter;
 import com.greengo.domain.Store;
@@ -10,9 +9,7 @@ import com.greengo.mapper.BookingMapper;
 import com.greengo.mapper.PricingPlanMapper;
 import com.greengo.mapper.ScooterMapper;
 import com.greengo.mapper.StoreMapper;
-import com.greengo.service.DistributedLockService;
 import com.greengo.service.GeoAddressService;
-import com.greengo.service.PaymentService;
 import com.greengo.service.impl.BookingServiceImpl;
 import com.greengo.utils.RentalConstants;
 import com.greengo.utils.ThreadLocalUtil;
@@ -30,16 +27,14 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
@@ -65,9 +60,6 @@ class BookingServiceImplTest {
     private PricingPlanMapper pricingPlanMapper;
 
     @Mock
-    private PaymentService paymentService;
-
-    @Mock
     private ScooterMapper scooterMapper;
 
     @Mock
@@ -76,30 +68,18 @@ class BookingServiceImplTest {
     @Mock
     private GeoAddressService geoAddressService;
 
-    @Mock
-    private DistributedLockService distributedLockService;
-
     private BookingServiceImpl bookingService;
 
     @BeforeEach
     void setUp() {
         bookingService = new BookingServiceImpl();
         ReflectionTestUtils.setField(bookingService, "pricingPlanMapper", pricingPlanMapper);
-        ReflectionTestUtils.setField(bookingService, "paymentService", paymentService);
         ReflectionTestUtils.setField(bookingService, "scooterMapper", scooterMapper);
         ReflectionTestUtils.setField(bookingService, "storeMapper", storeMapper);
         ReflectionTestUtils.setField(bookingService, "geoAddressService", geoAddressService);
-        ReflectionTestUtils.setField(bookingService, "distributedLockService", distributedLockService);
         ReflectionTestUtils.setField(bookingService, "baseMapper", bookingMapper);
         ReflectionTestUtils.setField(bookingService, "clock", FIXED_CLOCK);
         ThreadLocalUtil.set(Map.of("id", USER_ID));
-
-        lenient().when(distributedLockService.executeWithLock(any(String.class), org.mockito.ArgumentMatchers.<Supplier<?>>any()))
-                .thenAnswer(invocation -> ((Supplier<?>) invocation.getArgument(1)).get());
-        lenient().when(distributedLockService.executeWithLocks(
-                        org.mockito.ArgumentMatchers.<Collection<String>>any(),
-                        org.mockito.ArgumentMatchers.<Supplier<?>>any()))
-                .thenAnswer(invocation -> ((Supplier<?>) invocation.getArgument(1)).get());
 
         lenient().when(storeMapper.selectBatchIds(any())).thenReturn(List.of());
         lenient().when(scooterMapper.selectBatchIds(any())).thenReturn(List.of());
@@ -307,7 +287,7 @@ class BookingServiceImplTest {
     }
 
     @Test
-    void returnBookingCalculatesRoundedOverdueCostAndCompletesPayment() {
+    void returnBookingCalculatesRoundedOverdueCostAndMarksAwaitingPayment() {
         Booking booking = inProgressBooking();
         PricingPlan bookingPlan = pricingPlan(2L, "DAY_1", "30.00");
         PricingPlan hourlyPlan = pricingPlan(1L, "HOUR_1", "5.00");
@@ -319,14 +299,6 @@ class BookingServiceImplTest {
                 .rentalMode(RentalConstants.RENTAL_TYPE_STORE_PICKUP)
                 .status(RentalConstants.SCOOTER_STATUS_IN_USE)
                 .lockStatus(RentalConstants.SCOOTER_LOCK_STATUS_UNLOCKED)
-                .build();
-        Payment payment = Payment.builder()
-                .bookingId(BOOKING_ID)
-                .userId(USER_ID)
-                .amount(new BigDecimal("35.00"))
-                .status("SUCCESS")
-                .transactionId("TXN-RETURN-001")
-                .paymentTime(LocalDateTime.of(2026, 4, 15, 10, 0))
                 .build();
 
         booking.setEndTime(LocalDateTime.of(2026, 4, 15, 9, 50));
@@ -340,35 +312,23 @@ class BookingServiceImplTest {
         when(storeMapper.selectBatchIds(any())).thenReturn(List.of(store));
         when(scooterMapper.selectBatchIds(any())).thenReturn(List.of(scooter));
         when(pricingPlanMapper.selectBatchIds(any())).thenReturn(List.of(bookingPlan));
-        when(paymentService.pay(BOOKING_ID)).thenAnswer(invocation -> {
-            booking.setStatus(RentalConstants.BOOKING_STATUS_COMPLETED);
-            return payment;
-        });
 
         BookingSettlementResult result = bookingService.returnBooking(BOOKING_ID);
 
         assertEquals(new BigDecimal("5.00"), booking.getOverdueCost());
         assertEquals(new BigDecimal("35.00"), booking.getTotalCost());
         assertNotNull(booking.getReturnTime());
-        assertEquals(RentalConstants.BOOKING_STATUS_COMPLETED, result.getBooking().getStatus());
+        assertEquals(RentalConstants.BOOKING_STATUS_AWAITING_PAYMENT, result.getBooking().getStatus());
         assertEquals(RentalConstants.SCOOTER_STATUS_AVAILABLE, scooter.getStatus());
         assertEquals(RentalConstants.SCOOTER_LOCK_STATUS_LOCKED, scooter.getLockStatus());
-        assertEquals(payment, result.getPayment());
+        assertNull(result.getPayment());
     }
 
     @Test
-    void returnScanRideCalculatesRoundedMinuteCostAndUpdatesScooterLocation() {
+    void returnScanRideCalculatesRoundedMinuteCostAndMarksAwaitingPayment() {
         Booking booking = scanRideBooking();
         PricingPlan minutePlan = pricingPlan(9L, "MINUTE_1", "1.00");
         Scooter scooter = scanRideScooterInUse();
-        Payment payment = Payment.builder()
-                .bookingId(BOOKING_ID)
-                .userId(USER_ID)
-                .amount(new BigDecimal("4.00"))
-                .status("SUCCESS")
-                .transactionId("TXN-SCAN-001")
-                .paymentTime(LocalDateTime.of(2026, 4, 15, 10, 0))
-                .build();
 
         when(bookingMapper.selectById(BOOKING_ID)).thenReturn(booking);
         when(pricingPlanMapper.selectOne(any())).thenReturn(minutePlan);
@@ -379,10 +339,6 @@ class BookingServiceImplTest {
         when(pricingPlanMapper.selectBatchIds(any())).thenReturn(List.of(minutePlan));
         when(geoAddressService.reverseGeocode(new BigDecimal("103.985000"), new BigDecimal("30.769000")))
                 .thenReturn("Xipu Return Point");
-        when(paymentService.pay(BOOKING_ID)).thenAnswer(invocation -> {
-            booking.setStatus(RentalConstants.BOOKING_STATUS_COMPLETED);
-            return payment;
-        });
 
         BookingSettlementResult result = bookingService.returnScanRide(
                 BOOKING_ID,
@@ -393,12 +349,12 @@ class BookingServiceImplTest {
         assertEquals(new BigDecimal("4.00"), booking.getTotalCost());
         assertEquals(BigDecimal.ZERO, booking.getOverdueCost());
         assertEquals("Xipu Return Point", booking.getReturnLocation());
-        assertEquals(RentalConstants.BOOKING_STATUS_COMPLETED, result.getBooking().getStatus());
+        assertEquals(RentalConstants.BOOKING_STATUS_AWAITING_PAYMENT, result.getBooking().getStatus());
         assertEquals(RentalConstants.SCOOTER_STATUS_AVAILABLE, scooter.getStatus());
         assertEquals(RentalConstants.SCOOTER_LOCK_STATUS_LOCKED, scooter.getLockStatus());
         assertEquals(new BigDecimal("103.985000"), scooter.getLongitude());
         assertEquals(new BigDecimal("30.769000"), scooter.getLatitude());
-        assertEquals(payment, result.getPayment());
+        assertNull(result.getPayment());
     }
 
     @Test

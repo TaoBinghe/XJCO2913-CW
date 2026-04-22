@@ -8,9 +8,18 @@ public final class RentalConstants {
     public static final String BOOKING_STATUS_RESERVED = "RESERVED";
     public static final String BOOKING_STATUS_IN_PROGRESS = "IN_PROGRESS";
     public static final String BOOKING_STATUS_OVERDUE = "OVERDUE";
+    public static final String BOOKING_STATUS_AWAITING_PAYMENT = "AWAITING_PAYMENT";
     public static final String BOOKING_STATUS_COMPLETED = "COMPLETED";
     public static final String BOOKING_STATUS_CANCELLED = "CANCELLED";
     public static final String BOOKING_STATUS_NO_SHOW_CANCELLED = "NO_SHOW_CANCELLED";
+
+    public static final String PAYMENT_METHOD_WALLET = "WALLET";
+    public static final String PAYMENT_METHOD_CARD = "CARD";
+
+    public static final String PAYMENT_STATUS_SUCCESS = "SUCCESS";
+
+    public static final String WALLET_TRANSACTION_TYPE_RECHARGE = "RECHARGE";
+    public static final String WALLET_TRANSACTION_TYPE_BOOKING_PAYMENT = "BOOKING_PAYMENT";
 
     public static final String SCOOTER_STATUS_AVAILABLE = "AVAILABLE";
     public static final String SCOOTER_STATUS_IN_USE = "IN_USE";

@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS `user` (
     `email` VARCHAR(128) DEFAULT NULL COMMENT 'Email',
     `role` VARCHAR(32) NOT NULL DEFAULT 'CUSTOMER' COMMENT 'Role: CUSTOMER/MANAGER',
     `status` TINYINT NOT NULL DEFAULT 1 COMMENT 'Status: 0-disabled, 1-enabled',
+    `wallet_balance` DECIMAL(10, 2) NOT NULL DEFAULT 0.00 COMMENT 'Wallet balance',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
@@ -73,7 +74,7 @@ CREATE TABLE IF NOT EXISTS `booking` (
     `return_latitude` DECIMAL(10, 6) DEFAULT NULL COMMENT 'Return GCJ-02 latitude',
     `total_cost` DECIMAL(10, 2) NOT NULL COMMENT 'Final total cost',
     `overdue_cost` DECIMAL(10, 2) NOT NULL DEFAULT 0.00 COMMENT 'Overdue surcharge',
-    `status` VARCHAR(32) NOT NULL DEFAULT 'RESERVED' COMMENT 'Status: RESERVED/IN_PROGRESS/OVERDUE/COMPLETED/CANCELLED/NO_SHOW_CANCELLED',
+    `status` VARCHAR(32) NOT NULL DEFAULT 'RESERVED' COMMENT 'Status: RESERVED/IN_PROGRESS/OVERDUE/AWAITING_PAYMENT/COMPLETED/CANCELLED/NO_SHOW_CANCELLED',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
@@ -95,6 +96,7 @@ CREATE TABLE IF NOT EXISTS `payment` (
     `user_id` BIGINT NOT NULL COMMENT 'User ID',
     `amount` DECIMAL(10, 2) NOT NULL COMMENT 'Payment amount',
     `status` VARCHAR(32) NOT NULL COMMENT 'Status: SUCCESS/FAILED',
+    `payment_method` VARCHAR(32) NOT NULL DEFAULT 'CARD' COMMENT 'Payment method: WALLET/CARD',
     `card_last_four` VARCHAR(4) DEFAULT NULL COMMENT 'Last four digits of card',
     `transaction_id` VARCHAR(64) DEFAULT NULL COMMENT 'Transaction ID',
     `payment_time` DATETIME NOT NULL COMMENT 'Payment time',
@@ -104,6 +106,40 @@ CREATE TABLE IF NOT EXISTS `payment` (
     CONSTRAINT `fk_payment_booking` FOREIGN KEY (`booking_id`) REFERENCES `booking` (`id`) ON DELETE RESTRICT,
     CONSTRAINT `fk_payment_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Payment table';
+
+CREATE TABLE IF NOT EXISTS `bank_card` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `user_id` BIGINT NOT NULL COMMENT 'User ID',
+    `bank_name` VARCHAR(64) NOT NULL COMMENT 'Bank name',
+    `holder_name` VARCHAR(64) NOT NULL COMMENT 'Card holder name',
+    `card_number` VARCHAR(32) NOT NULL COMMENT 'Card number',
+    `card_last_four` VARCHAR(4) NOT NULL COMMENT 'Last four digits of card',
+    `password_hash` VARCHAR(32) NOT NULL COMMENT 'MD5 hash of card password',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_bank_card_user_card_number` (`user_id`, `card_number`),
+    KEY `idx_bank_card_user_id` (`user_id`),
+    CONSTRAINT `fk_bank_card_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Bound bank card table';
+
+CREATE TABLE IF NOT EXISTS `wallet_transaction` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `user_id` BIGINT NOT NULL COMMENT 'User ID',
+    `type` VARCHAR(32) NOT NULL COMMENT 'Transaction type: RECHARGE/BOOKING_PAYMENT',
+    `amount` DECIMAL(10, 2) NOT NULL COMMENT 'Transaction amount',
+    `balance_after` DECIMAL(10, 2) NOT NULL COMMENT 'Wallet balance after transaction',
+    `booking_id` BIGINT DEFAULT NULL COMMENT 'Booking ID for booking payments',
+    `bank_card_id` BIGINT DEFAULT NULL COMMENT 'Bank card ID for recharges',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_wallet_transaction_user_id` (`user_id`),
+    KEY `idx_wallet_transaction_booking_id` (`booking_id`),
+    KEY `idx_wallet_transaction_bank_card_id` (`bank_card_id`),
+    CONSTRAINT `fk_wallet_transaction_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_wallet_transaction_booking` FOREIGN KEY (`booking_id`) REFERENCES `booking` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_wallet_transaction_bank_card` FOREIGN KEY (`bank_card_id`) REFERENCES `bank_card` (`id`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Wallet transaction table';
 
 INSERT INTO `store` (`id`, `name`, `address`, `longitude`, `latitude`, `status`) VALUES
     (1, 'Xipu North Hub', 'Xipu Campus Library North Plaza', 103.981570, 30.768249, 'ENABLED'),

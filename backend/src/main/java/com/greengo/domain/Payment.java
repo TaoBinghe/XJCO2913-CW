@@ -34,6 +34,9 @@ public class Payment {
     /** Status: SUCCESS / FAILED */
     private String status;
 
+    /** Payment method: WALLET / CARD */
+    private String paymentMethod;
+
     /** Simulated payment: last four digits of card */
     private String cardLastFour;
 

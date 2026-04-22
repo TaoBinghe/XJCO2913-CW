@@ -48,7 +48,7 @@ class LoginInterceptorTest {
     }
 
     @Test
-    void preHandleAcceptsTokenBackedByRedisSession() throws Exception {
+    void preHandleAcceptsTokenBackedByServerSession() throws Exception {
         String token = JwtUtil.genToken(Map.of(
                 "id", 1L,
                 "username", "alice01",
@@ -76,7 +76,7 @@ class LoginInterceptorTest {
     }
 
     @Test
-    void preHandleRejectsMissingRedisSession() throws Exception {
+    void preHandleRejectsMissingServerSession() throws Exception {
         String token = JwtUtil.genToken(Map.of(
                 "id", 1L,
                 "username", "alice01",

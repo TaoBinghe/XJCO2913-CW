@@ -1,15 +1,15 @@
 package com.greengo.controller;
 
 import com.greengo.domain.Payment;
+import com.greengo.domain.PaymentRequest;
 import com.greengo.domain.Result;
 import com.greengo.service.PaymentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-// Payment API: simulate pay for booking
 @RestController
 @RequestMapping("/payment")
 public class PaymentController {
@@ -17,11 +17,13 @@ public class PaymentController {
     @Autowired
     private PaymentService paymentService;
 
-    // Simulate payment for booking by id (JWT required)
     @PostMapping
-    public Result<?> pay(@RequestParam Long bookingId) {
+    public Result<?> pay(@RequestBody PaymentRequest request) {
+        if (request == null || request.getBookingId() == null || request.getPaymentMethod() == null) {
+            return Result.error("Booking id and payment method are required");
+        }
         try {
-            Payment payment = paymentService.pay(bookingId);
+            Payment payment = paymentService.pay(request);
             return Result.success(payment);
         } catch (IllegalArgumentException e) {
             return Result.error(e.getMessage());
