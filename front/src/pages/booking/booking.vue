@@ -62,7 +62,7 @@
           </cover-view>
 
           <cover-view class="sheet-actions">
-            <cover-view class="sheet-button sheet-button-secondary" @tap="focusAvailableScooter">
+            <cover-view class="sheet-button sheet-button-secondary" @tap="recenterToUser">
               Recenter
             </cover-view>
             <cover-view
@@ -113,6 +113,7 @@ const DEFAULT_CENTER = {
   latitude: 30.76732,
   longitude: 103.98212
 }
+const USER_MARKER_ID = 900000001
 
 function parseScooterCode(rawValue) {
   const rawText = String(rawValue || '').trim()
@@ -143,6 +144,8 @@ export default {
       scanning: false,
       routeInfo: null,
       routePolylines: [],
+      userLocation: null,
+      locatingUser: false,
       mapCenter: { ...DEFAULT_CENTER },
       mapScale: 16,
       topbarTop: '56px',
@@ -157,7 +160,7 @@ export default {
       return this.scooters.filter(scooter => scooter.status === 'AVAILABLE').length
     },
     mapMarkers() {
-      return this.scooters
+      const scooterMarkers = this.scooters
         .filter(scooter => this.hasCoordinates(scooter))
         .map((scooter) => ({
           id: Number(scooter.id),
@@ -177,6 +180,33 @@ export default {
             display: this.selectedScooterId === scooter.id ? 'ALWAYS' : 'BYCLICK'
           }
         }))
+
+      if (!this.userLocation) {
+        return scooterMarkers
+      }
+
+      return [
+        {
+          id: USER_MARKER_ID,
+          latitude: this.userLocation.latitude,
+          longitude: this.userLocation.longitude,
+          iconPath: '/static/tab-my-active.png',
+          width: 36,
+          height: 36,
+          zIndex: 99,
+          anchor: { x: 0.5, y: 0.5 },
+          callout: {
+            content: 'You are here',
+            color: '#111111',
+            fontSize: 11,
+            borderRadius: 12,
+            bgColor: '#efff84',
+            padding: 6,
+            display: 'ALWAYS'
+          }
+        },
+        ...scooterMarkers
+      ]
     },
     mapCircles() {
       if (!this.selectedScooter || !this.hasCoordinates(this.selectedScooter)) {
@@ -221,6 +251,7 @@ export default {
   },
   onLoad() {
     this.initTopLayout()
+    this.locateCurrentUser()
     this.loadScooters()
   },
   methods: {
@@ -276,7 +307,9 @@ export default {
       try {
         const res = await getScooterList()
         this.scooters = sortScooters(res.data || [])
-        this.focusAvailableScooter()
+        if (!this.locatingUser && !this.userLocation) {
+          this.focusAvailableScooter()
+        }
       } catch (e) {
         this.scooters = []
       } finally {
@@ -284,7 +317,58 @@ export default {
       }
     },
     hasCoordinates(scooter) {
-      return scooter && scooter.longitude != null && scooter.latitude != null
+      return scooter
+        && Number.isFinite(Number(scooter.longitude))
+        && Number.isFinite(Number(scooter.latitude))
+    },
+    async locateCurrentUser() {
+      this.locatingUser = true
+      try {
+        const location = await getCurrentLocationWithPermission({
+          reasonTitle: 'Location permission needed',
+          reasonContent: 'To show your position on the map, please enable location permission.',
+          successHint: 'Location enabled. Please tap again.'
+        })
+        this.setUserLocation(location, true)
+      } catch (e) {
+        if (e?.code === LOCATION_ERROR_CODES.PERMISSION_JUST_ENABLED) {
+          setTimeout(() => this.locateCurrentUser(), 500)
+          return
+        }
+        if (e?.code === LOCATION_ERROR_CODES.LOCATION_UNAVAILABLE) {
+          uni.showToast({ title: 'Could not get your current location', icon: 'none' })
+        }
+        if (!this.userLocation && this.scooters.length) {
+          this.focusAvailableScooter()
+        }
+      } finally {
+        this.locatingUser = false
+      }
+    },
+    setUserLocation(location, shouldCenter = false) {
+      if (!this.hasCoordinates(location)) {
+        return
+      }
+
+      const userLocation = {
+        latitude: Number(location.latitude),
+        longitude: Number(location.longitude)
+      }
+      this.userLocation = userLocation
+
+      if (shouldCenter) {
+        this.mapCenter = { ...userLocation }
+        this.mapScale = 17
+      }
+    },
+    recenterToUser() {
+      if (this.userLocation) {
+        this.mapCenter = { ...this.userLocation }
+        this.mapScale = 17
+        return
+      }
+
+      this.locateCurrentUser()
     },
     focusAvailableScooter() {
       const focusScooter = this.selectedScooter && this.hasCoordinates(this.selectedScooter)
@@ -315,6 +399,14 @@ export default {
       this.routePolylines = []
     },
     handleMarkerTap(event) {
+      if (Number(event.detail.markerId) === USER_MARKER_ID) {
+        if (this.userLocation) {
+          this.mapCenter = { ...this.userLocation }
+          this.mapScale = 17
+        }
+        return
+      }
+
       const scooter = this.scooters.find(item => Number(item.id) === Number(event.detail.markerId))
       if (scooter) {
         this.selectScooter(scooter)
@@ -366,6 +458,7 @@ export default {
           reasonContent: 'To preview the walking route, please enable location permission in settings.',
           successHint: 'Location enabled. Please tap again.'
         })
+        this.setUserLocation(location, false)
         const res = await getScooterRoute(
           this.selectedScooter.id,
           location.longitude,
