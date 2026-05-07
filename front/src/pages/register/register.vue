@@ -36,6 +36,25 @@
         </view>
 
         <view class="auth-field">
+          <text class="auth-label">Email</text>
+          <input
+            class="auth-input"
+            v-model="email"
+            type="text"
+            placeholder="Enter your email"
+            placeholder-style="color: #b7bdb5"
+            confirm-type="next"
+          />
+        </view>
+
+        <view class="auth-field">
+          <text class="auth-label">Customer Type</text>
+          <picker mode="selector" :range="customerTypeLabels" :value="customerTypeIndex" @change="handleCustomerTypeChange">
+            <view class="auth-picker">{{ selectedCustomerTypeLabel }}</view>
+          </picker>
+        </view>
+
+        <view class="auth-field">
           <text class="auth-label">Confirm Password</text>
           <input
             class="auth-input"
@@ -74,12 +93,33 @@ export default {
     return {
       username: '',
       password: '',
+      email: '',
       confirmPassword: '',
+      customerTypeIndex: 0,
       loading: false,
-      illustrationSrc: loginBackground
+      illustrationSrc: loginBackground,
+      customerTypes: [
+        { label: 'Regular Customer', value: 'REGULAR' },
+        { label: 'Student (10% discount)', value: 'STUDENT' },
+        { label: 'Senior (10% discount)', value: 'SENIOR' }
+      ]
+    }
+  },
+  computed: {
+    customerTypeLabels() {
+      return this.customerTypes.map(item => item.label)
+    },
+    selectedCustomerType() {
+      return this.customerTypes[this.customerTypeIndex] || this.customerTypes[0]
+    },
+    selectedCustomerTypeLabel() {
+      return this.selectedCustomerType?.label || 'Regular Customer'
     }
   },
   methods: {
+    handleCustomerTypeChange(event) {
+      this.customerTypeIndex = Number(event.detail.value || 0)
+    },
     async handleRegister() {
       if (this.username.length < 5 || this.username.length > 16) {
         uni.showToast({ title: 'Username must be 5-16 characters', icon: 'none' })
@@ -89,6 +129,10 @@ export default {
         uni.showToast({ title: 'Password must be 5-16 characters', icon: 'none' })
         return
       }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.email.trim())) {
+        uni.showToast({ title: 'Please enter a valid email', icon: 'none' })
+        return
+      }
       if (this.password !== this.confirmPassword) {
         uni.showToast({ title: 'Passwords do not match', icon: 'none' })
         return
@@ -96,7 +140,12 @@ export default {
 
       this.loading = true
       try {
-        await register(this.username, this.password)
+        await register(
+          this.username.trim(),
+          this.password,
+          this.email.trim(),
+          this.selectedCustomerType.value
+        )
         uni.showToast({ title: 'Registration successful', icon: 'success' })
         setTimeout(() => {
           uni.navigateBack()
@@ -220,6 +269,20 @@ export default {
   box-shadow: 0 0 0 2rpx rgba(210, 218, 203, 0.18), 0 18rpx 40rpx rgba(17, 17, 17, 0.04);
   box-sizing: border-box;
   font-size: 30rpx;
+  color: #111111;
+}
+
+.auth-picker {
+  width: 100%;
+  height: 108rpx;
+  padding: 0 34rpx;
+  border: 3rpx solid #d2dacb;
+  border-radius: 54rpx;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 0 0 2rpx rgba(210, 218, 203, 0.18), 0 18rpx 40rpx rgba(17, 17, 17, 0.04);
+  box-sizing: border-box;
+  font-size: 30rpx;
+  line-height: 102rpx;
   color: #111111;
 }
 

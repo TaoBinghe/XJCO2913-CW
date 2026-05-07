@@ -46,9 +46,19 @@
           <template #title>Pricing Plans</template>
         </el-menu-item>
 
+        <el-menu-item index="/bookings">
+          <el-icon><Odometer /></el-icon>
+          <template #title>Guest Bookings</template>
+        </el-menu-item>
+
+        <el-menu-item index="/feedback">
+          <el-icon><User /></el-icon>
+          <template #title>Feedback Issues</template>
+        </el-menu-item>
+
         <el-menu-item index="/revenue">
           <el-icon><Histogram /></el-icon>
-          <template #title>Weekly Revenue</template>
+          <template #title>Revenue</template>
         </el-menu-item>
       </el-menu>
     </el-aside>

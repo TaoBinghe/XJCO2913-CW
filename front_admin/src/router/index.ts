@@ -47,10 +47,22 @@ const router = createRouter({
           meta: { title: 'Pricing Plans', icon: 'PriceTag' }
         },
         {
+          path: 'bookings',
+          name: 'Bookings',
+          component: () => import('@/views/Bookings.vue'),
+          meta: { title: 'Guest Bookings', icon: 'Odometer' }
+        },
+        {
+          path: 'feedback',
+          name: 'Feedback',
+          component: () => import('@/views/Feedback.vue'),
+          meta: { title: 'Feedback Issues', icon: 'User' }
+        },
+        {
           path: 'revenue',
           name: 'Revenue',
           component: () => import('@/views/Revenue.vue'),
-          meta: { title: 'Weekly Revenue', icon: 'Histogram' }
+          meta: { title: 'Revenue', icon: 'Histogram' }
         }
       ]
     }

@@ -3,7 +3,7 @@
     <div class="page-header">
       <div>
         <h2 class="page-heading">Scooter Management</h2>
-        <p class="page-copy">Manage Sprint 3 scooter modes, store assignments, lock states, and scan-ride coordinates.</p>
+        <p class="page-copy">Manage scooter modes, store assignments, lock states, and scan-ride coordinates.</p>
       </div>
       <div class="header-actions">
         <el-button :loading="tableLoading" @click="fetchScooters">

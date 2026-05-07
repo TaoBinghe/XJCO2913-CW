@@ -25,6 +25,12 @@
 			}
 		},
 		{
+			"path": "pages/feedback/feedback",
+			"style": {
+				"navigationBarTitleText": "Feedback"
+			}
+		},
+		{
 			"path": "pages/login/login",
 			"style": {
 				"navigationBarTitleText": "Login",

@@ -55,6 +55,7 @@ view,
 text,
 button,
 input,
+textarea,
 picker,
 image {
   box-sizing: border-box;
@@ -292,6 +293,11 @@ image {
 .status-overdue {
   background: #fff0d9;
   color: #b96d17;
+}
+
+.status-awaiting_payment {
+  background: #e8f1ff;
+  color: #2463d6;
 }
 
 .status-completed {

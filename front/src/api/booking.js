@@ -73,3 +73,21 @@ export function returnScanRide(bookingId, longitude, latitude) {
     data: { longitude, latitude }
   })
 }
+
+export function renewBooking(bookingId, hiredPeriod) {
+  return request({
+    url: '/booking/renew',
+    method: 'POST',
+    data: { bookingId, hiredPeriod },
+    contentType: 'query'
+  })
+}
+
+export function modifyBookingPeriod(bookingId, hiredPeriod) {
+  return request({
+    url: '/booking/modify-period',
+    method: 'POST',
+    data: { bookingId, hiredPeriod },
+    contentType: 'query'
+  })
+}

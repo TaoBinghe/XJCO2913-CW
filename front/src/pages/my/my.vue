@@ -44,6 +44,14 @@
           <text class="menu-pill">Open</text>
         </view>
 
+        <view class="card menu-card" @click="goFeedback">
+          <view class="menu-copy">
+            <text class="menu-title">Feedback</text>
+            <text class="menu-desc">Report scooter faults, payment issues, or booking problems and track staff responses.</text>
+          </view>
+          <text class="menu-pill">Support</text>
+        </view>
+
         <view class="card menu-card" @click="goStoreBooking">
           <view class="menu-copy">
             <text class="menu-title">Reserve at a Store</text>
@@ -116,6 +124,13 @@ export default {
         return
       }
       uni.switchTab({ url: '/pages/orders/orders' })
+    },
+    goFeedback() {
+      if (!this.isLoggedIn) {
+        uni.navigateTo({ url: '/pages/login/login' })
+        return
+      }
+      uni.navigateTo({ url: '/pages/feedback/feedback' })
     },
     goStoreBooking() {
       uni.navigateTo({ url: '/pages/store-booking/store-booking' })
