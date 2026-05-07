@@ -32,6 +32,13 @@ DB_URL=jdbc:mysql://<cloud-mysql-private-host>:3306/xjco2913?useSSL=false&server
 DB_USERNAME=<db-username>
 DB_PASSWORD=<db-password>
 AMAP_WEB_SERVICE_KEY=<amap-web-service-key>
+MAIL_HOST=<smtp-host>
+MAIL_PORT=587
+MAIL_USERNAME=<smtp-username>
+MAIL_PASSWORD=<smtp-password>
+MAIL_FROM=<from-address>
+MAIL_SMTP_AUTH=true
+MAIL_SMTP_STARTTLS_ENABLE=true
 ```
 
 Use the values in [cloud-hosting.env.example](c:/Users/ASUS/Desktop/wechat/backend/cloud-hosting.env.example:1) as the template. Do not leave `DB_URL` on the default `localhost:3306` value when the service runs in cloud hosting.

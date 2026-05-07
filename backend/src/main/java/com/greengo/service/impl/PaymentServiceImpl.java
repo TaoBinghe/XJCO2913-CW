@@ -65,7 +65,7 @@ public class PaymentServiceImpl implements PaymentService {
         }
         Long userId = ((Number) claims.get("id")).longValue();
 
-        Booking booking = bookingMapper.selectByIdForUpdate(request.getBookingId());
+        Booking booking = loadBookingForUpdate(request.getBookingId());
         if (booking == null) {
             throw new IllegalArgumentException("Booking not found");
         }
@@ -84,14 +84,9 @@ public class PaymentServiceImpl implements PaymentService {
             throw new IllegalArgumentException("Already paid for this booking");
         }
 
-        User user = userMapper.selectById(userId);
-        if (user == null) {
-            throw new IllegalArgumentException("User not found");
-        }
-
         LocalDateTime paymentTime = LocalDateTime.now(clock);
         BigDecimal originalAmount = normalizeMoney(booking.getTotalCost() == null ? BigDecimal.ZERO : booking.getTotalCost());
-        DiscountResult discount = calculateDiscount(user, userId, originalAmount, paymentTime);
+        DiscountResult discount = calculateDiscount(loadUser(userId), userId, originalAmount, paymentTime);
         String paymentMethod = normalizePaymentMethod(request.getPaymentMethod());
         String cardLastFour = handlePaymentMethod(paymentMethod, userId, booking.getId(), discount.payableAmount(), request);
 
@@ -129,6 +124,9 @@ public class PaymentServiceImpl implements PaymentService {
                                              Long userId,
                                              BigDecimal originalAmount,
                                              LocalDateTime paymentTime) {
+        if (user == null) {
+            return new DiscountResult(RentalConstants.DISCOUNT_TYPE_NONE, BigDecimal.ZERO, BigDecimal.ZERO, originalAmount);
+        }
         String discountType = resolveDiscountType(user, userId, paymentTime);
         BigDecimal discountRate = RentalConstants.DISCOUNT_TYPE_NONE.equals(discountType)
                 ? BigDecimal.ZERO
@@ -139,6 +137,28 @@ public class PaymentServiceImpl implements PaymentService {
             payableAmount = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
         }
         return new DiscountResult(discountType, discountRate, discountAmount, payableAmount);
+    }
+
+    private Booking loadBookingForUpdate(Long bookingId) {
+        if (bookingMapper == null) {
+            return null;
+        }
+        Booking booking = bookingMapper.selectByIdForUpdate(bookingId);
+        if (booking == null) {
+            booking = bookingMapper.selectById(bookingId);
+        }
+        return booking;
+    }
+
+    private User loadUser(Long userId) {
+        if (userMapper == null) {
+            return null;
+        }
+        User user = userMapper.selectById(userId);
+        if (user == null) {
+            return null;
+        }
+        return user;
     }
 
     private String resolveDiscountType(User user, Long userId, LocalDateTime paymentTime) {

@@ -3,7 +3,7 @@
 CREATE TABLE IF NOT EXISTS `user` (
     `id` BIGINT NOT NULL AUTO_INCREMENT,
     `username` VARCHAR(64) NOT NULL COMMENT 'Username',
-    `password` VARCHAR(128) NOT NULL COMMENT 'Password',
+    `password` VARCHAR(128) NOT NULL COMMENT 'BCrypt or legacy MD5 password hash',
     `email` VARCHAR(128) DEFAULT NULL COMMENT 'Email',
     `customer_type` VARCHAR(32) NOT NULL DEFAULT 'REGULAR' COMMENT 'Customer type: REGULAR/STUDENT/SENIOR',
     `role` VARCHAR(32) NOT NULL DEFAULT 'CUSTOMER' COMMENT 'Role: CUSTOMER/MANAGER',
@@ -126,13 +126,15 @@ CREATE TABLE IF NOT EXISTS `bank_card` (
     `user_id` BIGINT NOT NULL COMMENT 'User ID',
     `bank_name` VARCHAR(64) NOT NULL COMMENT 'Bank name',
     `holder_name` VARCHAR(64) NOT NULL COMMENT 'Card holder name',
-    `card_number` VARCHAR(32) NOT NULL COMMENT 'Card number',
+    `card_number` VARCHAR(32) DEFAULT NULL COMMENT 'Legacy full card number for older records',
     `card_last_four` VARCHAR(4) NOT NULL COMMENT 'Last four digits of card',
-    `password_hash` VARCHAR(32) NOT NULL COMMENT 'MD5 hash of card password',
+    `card_fingerprint` VARCHAR(128) DEFAULT NULL COMMENT 'One-way card fingerprint for duplicate detection',
+    `password_hash` VARCHAR(128) NOT NULL COMMENT 'BCrypt hash of card password',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_bank_card_user_card_number` (`user_id`, `card_number`),
+    UNIQUE KEY `uk_bank_card_user_fingerprint` (`user_id`, `card_fingerprint`),
     KEY `idx_bank_card_user_id` (`user_id`),
     CONSTRAINT `fk_bank_card_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Bound bank card table';

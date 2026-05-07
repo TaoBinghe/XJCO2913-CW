@@ -295,6 +295,102 @@ class BookingServiceImplTest {
     }
 
     @Test
+    void renewBookingExtendsActiveStoreBookingAndAddsSelectedPlanCost() {
+        Booking booking = inProgressBooking();
+        PricingPlan extensionPlan = pricingPlan(3L, "HOUR_4", "18.00");
+        Store store = enabledStore();
+        Scooter scooter = storePickupScooterInUse();
+
+        when(bookingMapper.selectById(BOOKING_ID)).thenReturn(booking);
+        when(pricingPlanMapper.selectOne(any())).thenReturn(extensionPlan);
+        when(storeMapper.selectById(STORE_ID)).thenReturn(store);
+        when(scooterMapper.selectCount(any())).thenReturn(2L);
+        when(bookingMapper.selectCount(any())).thenReturn(0L);
+        when(bookingMapper.updateById(booking)).thenReturn(1);
+        when(storeMapper.selectBatchIds(any())).thenReturn(List.of(store));
+        when(scooterMapper.selectBatchIds(any())).thenReturn(List.of(scooter));
+        when(pricingPlanMapper.selectBatchIds(any())).thenReturn(List.of(extensionPlan));
+
+        Booking renewed = bookingService.renewBooking(BOOKING_ID, "HOUR_4");
+
+        assertEquals(LocalDateTime.of(2026, 4, 16, 13, 0), booking.getEndTime());
+        assertEquals(new BigDecimal("48.00"), booking.getTotalCost());
+        assertEquals(BigDecimal.ZERO, booking.getOverdueCost());
+        assertEquals(RentalConstants.BOOKING_STATUS_IN_PROGRESS, booking.getStatus());
+        assertEquals(3L, booking.getPricingPlanId());
+        assertEquals("HOUR_4", renewed.getHirePeriod());
+        verify(bookingMapper).updateById(booking);
+    }
+
+    @Test
+    void renewBookingRestoresOverdueBookingWhenExtensionCoversCurrentTime() {
+        Booking booking = inProgressBooking();
+        booking.setStatus(RentalConstants.BOOKING_STATUS_OVERDUE);
+        booking.setEndTime(LocalDateTime.of(2026, 4, 15, 9, 0));
+        PricingPlan extensionPlan = pricingPlan(3L, "HOUR_4", "18.00");
+        Store store = enabledStore();
+
+        when(bookingMapper.selectById(BOOKING_ID)).thenReturn(booking);
+        when(pricingPlanMapper.selectOne(any())).thenReturn(extensionPlan);
+        when(storeMapper.selectById(STORE_ID)).thenReturn(store);
+        when(scooterMapper.selectCount(any())).thenReturn(2L);
+        when(bookingMapper.selectCount(any())).thenReturn(0L);
+        when(bookingMapper.updateById(booking)).thenReturn(1);
+        when(storeMapper.selectBatchIds(any())).thenReturn(List.of(store));
+        when(scooterMapper.selectBatchIds(any())).thenReturn(List.of(storePickupScooterInUse()));
+        when(pricingPlanMapper.selectBatchIds(any())).thenReturn(List.of(extensionPlan));
+
+        Booking renewed = bookingService.renewBooking(BOOKING_ID, "HOUR_4");
+
+        assertEquals(LocalDateTime.of(2026, 4, 15, 13, 0), renewed.getEndTime());
+        assertEquals(new BigDecimal("48.00"), renewed.getTotalCost());
+        assertEquals(RentalConstants.BOOKING_STATUS_IN_PROGRESS, renewed.getStatus());
+    }
+
+    @Test
+    void renewBookingRejectsWhenExtendedWindowExceedsStoreInventory() {
+        Booking booking = inProgressBooking();
+        PricingPlan extensionPlan = pricingPlan(3L, "HOUR_4", "18.00");
+        Store store = enabledStore();
+
+        when(bookingMapper.selectById(BOOKING_ID)).thenReturn(booking);
+        when(pricingPlanMapper.selectOne(any())).thenReturn(extensionPlan);
+        when(storeMapper.selectById(STORE_ID)).thenReturn(store);
+        when(scooterMapper.selectCount(any())).thenReturn(1L);
+        when(bookingMapper.selectCount(any())).thenReturn(1L);
+
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> bookingService.renewBooking(BOOKING_ID, "HOUR_4"));
+
+        assertEquals("Store inventory is fully booked for the selected time", error.getMessage());
+        verify(bookingMapper, never()).updateById(any(Booking.class));
+    }
+
+    @Test
+    void modifyBookingPeriodExtendsToLongerPlanAndRecalculatesCost() {
+        Booking booking = inProgressBooking();
+        PricingPlan weekPlan = pricingPlan(4L, "WEEK_1", "100.00");
+        Store store = enabledStore();
+
+        when(bookingMapper.selectById(BOOKING_ID)).thenReturn(booking);
+        when(pricingPlanMapper.selectOne(any())).thenReturn(weekPlan);
+        when(storeMapper.selectById(STORE_ID)).thenReturn(store);
+        when(scooterMapper.selectCount(any())).thenReturn(2L);
+        when(bookingMapper.selectCount(any())).thenReturn(0L);
+        when(bookingMapper.updateById(booking)).thenReturn(1);
+        when(storeMapper.selectBatchIds(any())).thenReturn(List.of(store));
+        when(scooterMapper.selectBatchIds(any())).thenReturn(List.of(storePickupScooterInUse()));
+        when(pricingPlanMapper.selectBatchIds(any())).thenReturn(List.of(weekPlan));
+
+        Booking modified = bookingService.modifyBookingPeriod(BOOKING_ID, "WEEK_1");
+
+        assertEquals(LocalDateTime.of(2026, 4, 22, 9, 0), modified.getEndTime());
+        assertEquals(new BigDecimal("100.00"), modified.getTotalCost());
+        assertEquals(4L, modified.getPricingPlanId());
+        assertEquals("WEEK_1", modified.getHirePeriod());
+    }
+
+    @Test
     void returnBookingCalculatesRoundedOverdueCostAndMarksAwaitingPayment() {
         Booking booking = inProgressBooking();
         PricingPlan bookingPlan = pricingPlan(2L, "DAY_1", "30.00");
@@ -447,6 +543,13 @@ class BookingServiceImplTest {
                 .status(RentalConstants.SCOOTER_STATUS_AVAILABLE)
                 .lockStatus(RentalConstants.SCOOTER_LOCK_STATUS_LOCKED)
                 .build();
+    }
+
+    private Scooter storePickupScooterInUse() {
+        Scooter scooter = availableScooter();
+        scooter.setStatus(RentalConstants.SCOOTER_STATUS_IN_USE);
+        scooter.setLockStatus(RentalConstants.SCOOTER_LOCK_STATUS_UNLOCKED);
+        return scooter;
     }
 
     private Booking scanRideBooking() {

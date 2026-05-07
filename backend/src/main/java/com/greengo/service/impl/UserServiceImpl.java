@@ -1,10 +1,11 @@
 package com.greengo.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.greengo.domain.User;
 import com.greengo.mapper.UserMapper;
 import com.greengo.service.UserService;
-import com.greengo.utils.Md5Util;
+import com.greengo.utils.PasswordHashUtil;
 import com.greengo.utils.RentalConstants;
 import org.springframework.stereotype.Service;
 
@@ -25,9 +26,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Override
     public User findByUserName(String username) {
-        return lambdaQuery()
-                .eq(User::getUsername, username)
-                .one();
+        return baseMapper.selectOne(new QueryWrapper<User>().eq("username", username));
     }
 
     @Override
@@ -39,7 +38,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     public void register(String username, String password, String email, String customerType) {
         User user = new User();
         user.setUsername(username);
-        user.setPassword(Md5Util.getMD5String(password));
+        user.setPassword(PasswordHashUtil.hash(password));
         user.setEmail(normalizeEmail(email));
         user.setCustomerType(normalizeCustomerType(customerType));
         user.setRole("CUSTOMER");
@@ -50,10 +49,15 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Override
     public User login(String username, String password) {
-        return lambdaQuery()
-                .eq(User::getUsername, username)
-                .eq(User::getPassword, Md5Util.getMD5String(password))
-                .one();
+        User user = findByUserName(username);
+        if (user == null || !PasswordHashUtil.matches(password, user.getPassword())) {
+            return null;
+        }
+        if (PasswordHashUtil.needsUpgrade(user.getPassword())) {
+            user.setPassword(PasswordHashUtil.hash(password));
+            updateById(user);
+        }
+        return user;
     }
 
     private String normalizeEmail(String email) {
