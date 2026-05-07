@@ -28,6 +28,12 @@ public class Booking {
 
     private Long userId;
 
+    private String customerName;
+
+    private String customerEmail;
+
+    private Long createdByStaffUserId;
+
     private Long scooterId;
 
     private Long pricingPlanId;

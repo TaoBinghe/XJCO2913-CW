@@ -5,26 +5,24 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.greengo.domain.Booking;
 import com.greengo.domain.BookingSettlementResult;
-import com.greengo.domain.Payment;
 import com.greengo.domain.PricingPlan;
 import com.greengo.domain.Scooter;
 import com.greengo.domain.Store;
+import com.greengo.domain.User;
 import com.greengo.mapper.BookingMapper;
 import com.greengo.mapper.PricingPlanMapper;
 import com.greengo.mapper.ScooterMapper;
 import com.greengo.mapper.StoreMapper;
+import com.greengo.mapper.UserMapper;
+import com.greengo.service.BookingConfirmationEmailService;
 import com.greengo.service.BookingService;
-import com.greengo.service.DistributedLockService;
 import com.greengo.service.GeoAddressService;
-import com.greengo.service.PaymentService;
+import com.greengo.utils.Md5Util;
 import com.greengo.utils.PricingPlanPeriodUtil;
-import com.greengo.utils.RedisCacheNames;
-import com.greengo.utils.RedisKeys;
 import com.greengo.utils.RentalConstants;
+import com.greengo.utils.ScooterDisplayMetrics;
 import com.greengo.utils.ThreadLocalUtil;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,20 +32,22 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
 public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> implements BookingService {
 
     private static final String OVERDUE_RATE_MISSING = "Pricing plan HOUR_1 is required for overdue settlement";
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
+    private static final int MAX_CUSTOMER_NAME_LENGTH = 128;
 
     @Autowired
     private PricingPlanMapper pricingPlanMapper;
-
-    @Autowired
-    private PaymentService paymentService;
 
     @Autowired
     private ScooterMapper scooterMapper;
@@ -55,17 +55,19 @@ public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> impl
     @Autowired
     private StoreMapper storeMapper;
 
+    @Autowired
+    private UserMapper userMapper;
+
     @Autowired(required = false)
     private GeoAddressService geoAddressService;
 
-    @Autowired
-    private DistributedLockService distributedLockService;
+    @Autowired(required = false)
+    private BookingConfirmationEmailService bookingConfirmationEmailService;
 
     @Autowired
     private Clock clock = Clock.systemDefaultZone();
 
     @Override
-    @Cacheable(value = RedisCacheNames.PRICING_PLAN_LIST, key = "'reservation'")
     public List<PricingPlan> listPricingPlan() {
         return pricingPlanMapper.selectList(new QueryWrapper<PricingPlan>().orderByAsc("price")).stream()
                 .filter(plan -> PricingPlanPeriodUtil.isReservationHirePeriod(plan.getHirePeriod()))
@@ -79,39 +81,56 @@ public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> impl
             throw new IllegalArgumentException("Store is required");
         }
         Long userId = currentUserId();
-        return distributedLockService.executeWithLocks(
-                List.of(RedisKeys.userBookingLock(userId), RedisKeys.storeLock(storeId)),
-                () -> doCreateStoreBooking(userId, storeId, appointmentStart, hiredPeriod)
+        Booking booking = doCreateStoreBooking(userId, storeId, appointmentStart, hiredPeriod);
+        sendBookingConfirmation(booking);
+        return booking;
+    }
+
+    @Override
+    @Transactional
+    public Booking createStoreBookingForUnregistered(String customerName,
+                                                     String customerEmail,
+                                                     Long storeId,
+                                                     LocalDateTime appointmentStart,
+                                                     String hiredPeriod) {
+        String normalizedName = normalizeCustomerName(customerName);
+        String normalizedEmail = normalizeCustomerEmail(customerEmail);
+        Long staffUserId = currentUserId();
+
+        User guestUser = createGuestUser(normalizedEmail);
+        Booking booking = doCreateStoreBooking(
+                guestUser.getId(),
+                storeId,
+                appointmentStart,
+                hiredPeriod,
+                normalizedName,
+                normalizedEmail,
+                staffUserId
         );
+        sendBookingConfirmation(booking);
+        return booking;
     }
 
     @Override
     @Transactional
     public Booking cancelStoreBooking(Long bookingId) {
-        return distributedLockService.executeWithLock(
-                RedisKeys.bookingLock(bookingId),
-                () -> doCancelStoreBooking(bookingId)
-        );
+        return doCancelStoreBooking(bookingId);
     }
 
     @Override
     @Transactional
-    @CacheEvict(value = RedisCacheNames.SCOOTER_LIST, allEntries = true)
     public Booking startScanRide(String scooterCode) {
         if (scooterCode == null || scooterCode.isBlank()) {
             throw new IllegalArgumentException("Scooter code is required");
         }
         Long userId = currentUserId();
-        return distributedLockService.executeWithLock(RedisKeys.userBookingLock(userId), () -> {
-            Scooter scooter = findScooterByCode(scooterCode);
-            if (scooter == null) {
-                throw new IllegalArgumentException("Scooter not found");
-            }
-            return distributedLockService.executeWithLock(
-                    RedisKeys.scooterLock(scooter.getId()),
-                    () -> doStartScanRide(userId, scooter.getId(), scooterCode.trim())
-            );
-        });
+        Scooter scooter = findScooterByCode(scooterCode);
+        if (scooter == null) {
+            throw new IllegalArgumentException("Scooter not found");
+        }
+        Booking booking = doStartScanRide(userId, scooter.getId(), scooterCode.trim());
+        sendBookingConfirmation(booking);
+        return booking;
     }
 
     @Override
@@ -134,63 +153,45 @@ public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> impl
 
     @Override
     @Transactional
-    @CacheEvict(value = RedisCacheNames.SCOOTER_LIST, allEntries = true)
     public Booking pickupBooking(Long bookingId, Long scooterId) {
         if (scooterId == null) {
             throw new IllegalArgumentException("Pickup scooter is required");
         }
-        return distributedLockService.executeWithLocks(
-                List.of(RedisKeys.bookingLock(bookingId), RedisKeys.scooterLock(scooterId)),
-                () -> doPickupBooking(bookingId, scooterId)
-        );
+        return doPickupBooking(bookingId, scooterId);
     }
 
     @Override
     @Transactional
-    @CacheEvict(value = RedisCacheNames.SCOOTER_LIST, allEntries = true)
     public Booking lockScooter(Long bookingId) {
         return updateScooterLockStatus(bookingId, RentalConstants.SCOOTER_LOCK_STATUS_LOCKED);
     }
 
     @Override
     @Transactional
-    @CacheEvict(value = RedisCacheNames.SCOOTER_LIST, allEntries = true)
     public Booking unlockScooter(Long bookingId) {
         return updateScooterLockStatus(bookingId, RentalConstants.SCOOTER_LOCK_STATUS_UNLOCKED);
     }
 
     @Override
     @Transactional
-    @CacheEvict(value = RedisCacheNames.SCOOTER_LIST, allEntries = true)
     public BookingSettlementResult returnBooking(Long bookingId) {
-        return distributedLockService.executeWithLock(RedisKeys.bookingLock(bookingId), () -> {
-            Booking booking = getOwnedBooking(bookingId);
-            requireRentalType(booking, RentalConstants.RENTAL_TYPE_STORE_PICKUP, "This booking must be returned through the store pickup flow");
-            if (booking.getScooterId() == null) {
-                throw new IllegalArgumentException("Booking has no picked scooter");
-            }
-            return distributedLockService.executeWithLock(
-                    RedisKeys.scooterLock(booking.getScooterId()),
-                    () -> doReturnBooking(booking, null, null)
-            );
-        });
+        Booking booking = getOwnedBookingForUpdate(bookingId);
+        requireRentalType(booking, RentalConstants.RENTAL_TYPE_STORE_PICKUP, "This booking must be returned through the store pickup flow");
+        if (booking.getScooterId() == null) {
+            throw new IllegalArgumentException("Booking has no picked scooter");
+        }
+        return doReturnBooking(booking, null, null);
     }
 
     @Override
     @Transactional
-    @CacheEvict(value = RedisCacheNames.SCOOTER_LIST, allEntries = true)
     public BookingSettlementResult returnScanRide(Long bookingId, BigDecimal longitude, BigDecimal latitude) {
-        return distributedLockService.executeWithLock(RedisKeys.bookingLock(bookingId), () -> {
-            Booking booking = getOwnedBooking(bookingId);
-            requireRentalType(booking, RentalConstants.RENTAL_TYPE_SCAN_RIDE, "Only scan ride bookings can use scan return");
-            if (booking.getScooterId() == null) {
-                throw new IllegalArgumentException("Booking has no scooter");
-            }
-            return distributedLockService.executeWithLock(
-                    RedisKeys.scooterLock(booking.getScooterId()),
-                    () -> doReturnBooking(booking, longitude, latitude)
-            );
-        });
+        Booking booking = getOwnedBookingForUpdate(bookingId);
+        requireRentalType(booking, RentalConstants.RENTAL_TYPE_SCAN_RIDE, "Only scan ride bookings can use scan return");
+        if (booking.getScooterId() == null) {
+            throw new IllegalArgumentException("Booking has no scooter");
+        }
+        return doReturnBooking(booking, longitude, latitude);
     }
 
     @Override
@@ -209,10 +210,7 @@ public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> impl
 
         int updated = 0;
         for (Long bookingId : bookingIds) {
-            Boolean changed = distributedLockService.executeWithLock(
-                    RedisKeys.bookingLock(bookingId),
-                    () -> expireReservationIfNeeded(bookingId, now)
-            );
+            Boolean changed = expireReservationIfNeeded(bookingId, now);
             if (Boolean.TRUE.equals(changed)) {
                 updated++;
             }
@@ -237,10 +235,7 @@ public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> impl
 
         int updated = 0;
         for (Long bookingId : bookingIds) {
-            Boolean changed = distributedLockService.executeWithLock(
-                    RedisKeys.bookingLock(bookingId),
-                    () -> markBookingOverdueIfNeeded(bookingId, now)
-            );
+            Boolean changed = markBookingOverdueIfNeeded(bookingId, now);
             if (Boolean.TRUE.equals(changed)) {
                 updated++;
             }
@@ -295,12 +290,26 @@ public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> impl
     }
 
     private Booking doCreateStoreBooking(Long userId, Long storeId, LocalDateTime appointmentStart, String hiredPeriod) {
+        return doCreateStoreBooking(userId, storeId, appointmentStart, hiredPeriod, null, null, null);
+    }
+
+    private Booking doCreateStoreBooking(Long userId,
+                                         Long storeId,
+                                         LocalDateTime appointmentStart,
+                                         String hiredPeriod,
+                                         String customerName,
+                                         String customerEmail,
+                                         Long createdByStaffUserId) {
+        if (storeId == null) {
+            throw new IllegalArgumentException("Store is required");
+        }
         validateAppointmentWindow(appointmentStart);
         PricingPlan pricingPlan = findStorePricingPlanByHirePeriod(hiredPeriod);
         LocalDateTime appointmentEnd = PricingPlanPeriodUtil.addPeriod(appointmentStart, pricingPlan.getHirePeriod());
 
+        lockUser(userId);
         ensureNoOpenBooking(userId, null, "You already have an unfinished booking");
-        Store store = storeMapper.selectById(storeId);
+        Store store = lockStore(storeId);
         if (store == null || !RentalConstants.STORE_STATUS_ENABLED.equals(store.getStatus())) {
             throw new IllegalArgumentException("Store is not available");
         }
@@ -308,6 +317,9 @@ public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> impl
 
         Booking booking = new Booking();
         booking.setUserId(userId);
+        booking.setCustomerName(customerName);
+        booking.setCustomerEmail(customerEmail);
+        booking.setCreatedByStaffUserId(createdByStaffUserId);
         booking.setStoreId(storeId);
         booking.setPricingPlanId(pricingPlan.getId());
         booking.setRentalType(RentalConstants.RENTAL_TYPE_STORE_PICKUP);
@@ -321,10 +333,11 @@ public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> impl
         if (baseMapper.insert(booking) <= 0) {
             throw new IllegalArgumentException("Failed to create booking");
         }
-        return getOwnedBookingDetail(booking.getId());
+        return getBookingDetail(booking.getId());
     }
 
     private Booking doStartScanRide(Long userId, Long scooterId, String scooterCode) {
+        lockUser(userId);
         ensureNoOpenBooking(userId, null, "You already have an unfinished booking");
 
         Scooter scooter = findScooterByCode(scooterCode);
@@ -364,16 +377,21 @@ public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> impl
             throw new IllegalArgumentException("Failed to start scan ride");
         }
 
-        scooter.setStatus(RentalConstants.SCOOTER_STATUS_IN_USE);
-        scooter.setLockStatus(RentalConstants.SCOOTER_LOCK_STATUS_UNLOCKED);
-        if (scooterMapper.updateById(scooter) <= 0) {
-            throw new IllegalArgumentException("Failed to update scooter for scan ride");
+        int updatedScooter = scooterMapper.updateStatusAndLockIfCurrent(
+                scooter.getId(),
+                RentalConstants.RENTAL_TYPE_SCAN_RIDE,
+                RentalConstants.SCOOTER_STATUS_AVAILABLE,
+                RentalConstants.SCOOTER_STATUS_IN_USE,
+                RentalConstants.SCOOTER_LOCK_STATUS_UNLOCKED
+        );
+        if (updatedScooter <= 0) {
+            throw new IllegalArgumentException("Scooter is not available");
         }
         return getOwnedBookingDetail(booking.getId());
     }
 
     private Booking doCancelStoreBooking(Long bookingId) {
-        Booking booking = getOwnedBooking(bookingId);
+        Booking booking = getOwnedBookingForUpdate(bookingId);
         requireRentalType(booking, RentalConstants.RENTAL_TYPE_STORE_PICKUP, "Only store pickup bookings can be cancelled");
         if (!RentalConstants.BOOKING_STATUS_RESERVED.equals(booking.getStatus())) {
             throw new IllegalArgumentException("Only reserved bookings can be cancelled");
@@ -386,7 +404,7 @@ public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> impl
     }
 
     private Booking doPickupBooking(Long bookingId, Long scooterId) {
-        Booking booking = getOwnedBooking(bookingId);
+        Booking booking = getOwnedBookingForUpdate(bookingId);
         requireRentalType(booking, RentalConstants.RENTAL_TYPE_STORE_PICKUP, "Only store pickup bookings can be picked up");
         if (!RentalConstants.BOOKING_STATUS_RESERVED.equals(booking.getStatus())) {
             throw new IllegalArgumentException("Only reserved bookings can be picked up");
@@ -409,6 +427,17 @@ public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> impl
             throw new IllegalArgumentException("Scooter is not available for pickup");
         }
 
+        int updatedScooter = scooterMapper.updateStatusAndLockIfCurrent(
+                scooter.getId(),
+                RentalConstants.RENTAL_TYPE_STORE_PICKUP,
+                RentalConstants.SCOOTER_STATUS_AVAILABLE,
+                RentalConstants.SCOOTER_STATUS_IN_USE,
+                RentalConstants.SCOOTER_LOCK_STATUS_UNLOCKED
+        );
+        if (updatedScooter <= 0) {
+            throw new IllegalArgumentException("Scooter is not available for pickup");
+        }
+
         booking.setScooterId(scooterId);
         booking.setPickupTime(now);
         booking.setPickupLocation(scooter.getLocation());
@@ -418,37 +447,28 @@ public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> impl
         if (baseMapper.updateById(booking) <= 0) {
             throw new IllegalArgumentException("Failed to pick up booking");
         }
-
-        scooter.setStatus(RentalConstants.SCOOTER_STATUS_IN_USE);
-        scooter.setLockStatus(RentalConstants.SCOOTER_LOCK_STATUS_UNLOCKED);
-        if (scooterMapper.updateById(scooter) <= 0) {
-            throw new IllegalArgumentException("Failed to update scooter for pickup");
-        }
         return getOwnedBookingDetail(bookingId);
     }
 
     private Booking updateScooterLockStatus(Long bookingId, String lockStatus) {
-        return distributedLockService.executeWithLock(RedisKeys.bookingLock(bookingId), () -> {
-            Booking booking = getOwnedBooking(bookingId);
-            if (booking.getScooterId() == null) {
-                throw new IllegalArgumentException("Booking has no picked scooter");
-            }
-            if (!RentalConstants.BOOKING_STATUS_IN_PROGRESS.equals(booking.getStatus())
-                    && !RentalConstants.BOOKING_STATUS_OVERDUE.equals(booking.getStatus())) {
-                throw new IllegalArgumentException("Only active or overdue bookings can change scooter lock status");
-            }
-            return distributedLockService.executeWithLock(RedisKeys.scooterLock(booking.getScooterId()), () -> {
-                Scooter scooter = scooterMapper.selectById(booking.getScooterId());
-                if (scooter == null) {
-                    throw new IllegalArgumentException("Scooter not found");
-                }
-                scooter.setLockStatus(lockStatus);
-                if (scooterMapper.updateById(scooter) <= 0) {
-                    throw new IllegalArgumentException("Failed to update scooter lock status");
-                }
-                return getOwnedBookingDetail(bookingId);
-            });
-        });
+        Booking booking = getOwnedBookingForUpdate(bookingId);
+        if (booking.getScooterId() == null) {
+            throw new IllegalArgumentException("Booking has no picked scooter");
+        }
+        if (!RentalConstants.BOOKING_STATUS_IN_PROGRESS.equals(booking.getStatus())
+                && !RentalConstants.BOOKING_STATUS_OVERDUE.equals(booking.getStatus())) {
+            throw new IllegalArgumentException("Only active or overdue bookings can change scooter lock status");
+        }
+
+        Scooter scooter = scooterMapper.selectById(booking.getScooterId());
+        if (scooter == null) {
+            throw new IllegalArgumentException("Scooter not found");
+        }
+        scooter.setLockStatus(lockStatus);
+        if (scooterMapper.updateById(scooter) <= 0) {
+            throw new IllegalArgumentException("Failed to update scooter lock status");
+        }
+        return getOwnedBookingDetail(bookingId);
     }
 
     private BookingSettlementResult doReturnBooking(Booking booking, BigDecimal longitude, BigDecimal latitude) {
@@ -493,11 +513,10 @@ public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> impl
         booking.setReturnTime(returnTime);
         booking.setOverdueCost(overdueCost);
         booking.setTotalCost(totalCost);
+        booking.setStatus(RentalConstants.BOOKING_STATUS_AWAITING_PAYMENT);
         if (baseMapper.updateById(booking) <= 0) {
             throw new IllegalArgumentException("Failed to update booking before payment");
         }
-
-        Payment payment = paymentService.pay(booking.getId());
 
         scooter.setStatus(RentalConstants.SCOOTER_STATUS_AVAILABLE);
         scooter.setLockStatus(RentalConstants.SCOOTER_LOCK_STATUS_LOCKED);
@@ -517,40 +536,44 @@ public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> impl
             throw new IllegalArgumentException("Failed to update scooter after return");
         }
 
-        return new BookingSettlementResult(getOwnedBookingDetail(booking.getId()), payment);
+        return new BookingSettlementResult(getOwnedBookingDetail(booking.getId()), null);
     }
 
     private Boolean expireReservationIfNeeded(Long bookingId, LocalDateTime now) {
-        Booking booking = baseMapper.selectById(bookingId);
-        if (booking == null
-                || !RentalConstants.RENTAL_TYPE_STORE_PICKUP.equals(booking.getRentalType())
-                || !RentalConstants.BOOKING_STATUS_RESERVED.equals(booking.getStatus())) {
-            return false;
-        }
-        if (booking.getPickupDeadline() == null || !now.isAfter(booking.getPickupDeadline())) {
-            return false;
-        }
-        booking.setStatus(RentalConstants.BOOKING_STATUS_NO_SHOW_CANCELLED);
-        return baseMapper.updateById(booking) > 0;
+        return baseMapper.expireReservationIfStillReserved(
+                bookingId,
+                RentalConstants.RENTAL_TYPE_STORE_PICKUP,
+                RentalConstants.BOOKING_STATUS_RESERVED,
+                RentalConstants.BOOKING_STATUS_NO_SHOW_CANCELLED,
+                now
+        ) > 0;
     }
 
     private Boolean markBookingOverdueIfNeeded(Long bookingId, LocalDateTime now) {
-        Booking booking = baseMapper.selectById(bookingId);
-        if (booking == null
-                || !RentalConstants.RENTAL_TYPE_STORE_PICKUP.equals(booking.getRentalType())
-                || !RentalConstants.BOOKING_STATUS_IN_PROGRESS.equals(booking.getStatus())) {
-            return false;
-        }
-        if (booking.getReturnTime() != null || booking.getEndTime() == null || !now.isAfter(booking.getEndTime())) {
-            return false;
-        }
-        booking.setStatus(RentalConstants.BOOKING_STATUS_OVERDUE);
-        return baseMapper.updateById(booking) > 0;
+        return baseMapper.markOverdueIfStillInProgress(
+                bookingId,
+                RentalConstants.RENTAL_TYPE_STORE_PICKUP,
+                RentalConstants.BOOKING_STATUS_IN_PROGRESS,
+                RentalConstants.BOOKING_STATUS_OVERDUE,
+                now
+        ) > 0;
     }
 
     private Booking getOwnedBooking(Long bookingId) {
         Long userId = currentUserId();
         Booking booking = baseMapper.selectById(bookingId);
+        if (booking == null) {
+            throw new IllegalArgumentException("Booking not found");
+        }
+        if (!Objects.equals(booking.getUserId(), userId)) {
+            throw new IllegalArgumentException("Not your booking");
+        }
+        return booking;
+    }
+
+    private Booking getOwnedBookingForUpdate(Long bookingId) {
+        Long userId = currentUserId();
+        Booking booking = baseMapper.selectByIdForUpdate(bookingId);
         if (booking == null) {
             throw new IllegalArgumentException("Booking not found");
         }
@@ -566,9 +589,86 @@ public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> impl
         return booking;
     }
 
+    private Booking getBookingDetail(Long bookingId) {
+        Booking booking = baseMapper.selectById(bookingId);
+        if (booking == null) {
+            throw new IllegalArgumentException("Booking not found");
+        }
+        enrichBookings(List.of(booking));
+        return booking;
+    }
+
     private Long currentUserId() {
         Map<String, Object> claims = ThreadLocalUtil.get();
         return ((Number) claims.get("id")).longValue();
+    }
+
+    private User lockUser(Long userId) {
+        User user = userMapper.selectByIdForUpdate(userId);
+        if (user == null) {
+            throw new IllegalArgumentException("User not found");
+        }
+        return user;
+    }
+
+    private Store lockStore(Long storeId) {
+        return storeMapper.selectByIdForUpdate(storeId);
+    }
+
+    private User createGuestUser(String email) {
+        for (int attempt = 0; attempt < 3; attempt++) {
+            String username = generateGuestUsername();
+            Long existingCount = userMapper.selectCount(new QueryWrapper<User>().eq("username", username));
+            if (existingCount != null && existingCount > 0) {
+                continue;
+            }
+
+            User user = new User();
+            user.setUsername(username);
+            user.setPassword(Md5Util.getMD5String(UUID.randomUUID().toString()));
+            user.setEmail(email);
+            user.setCustomerType(RentalConstants.CUSTOMER_TYPE_REGULAR);
+            user.setRole("CUSTOMER");
+            user.setStatus(1);
+            user.setWalletBalance(BigDecimal.ZERO);
+
+            if (userMapper.insert(user) > 0 && user.getId() != null) {
+                return user;
+            }
+        }
+        throw new IllegalArgumentException("Failed to create guest user");
+    }
+
+    private String generateGuestUsername() {
+        return "guest_" + UUID.randomUUID().toString().replace("-", "");
+    }
+
+    private String normalizeCustomerName(String customerName) {
+        if (customerName == null || customerName.isBlank()) {
+            throw new IllegalArgumentException("Customer name is required");
+        }
+        String normalized = customerName.trim();
+        if (normalized.length() > MAX_CUSTOMER_NAME_LENGTH) {
+            throw new IllegalArgumentException("Customer name must be 128 characters or fewer");
+        }
+        return normalized;
+    }
+
+    private String normalizeCustomerEmail(String customerEmail) {
+        if (customerEmail == null) {
+            throw new IllegalArgumentException("Valid customer email is required");
+        }
+        String normalized = customerEmail.trim().toLowerCase(Locale.ROOT);
+        if (!EMAIL_PATTERN.matcher(normalized).matches()) {
+            throw new IllegalArgumentException("Valid customer email is required");
+        }
+        return normalized;
+    }
+
+    private void sendBookingConfirmation(Booking booking) {
+        if (bookingConfirmationEmailService != null) {
+            bookingConfirmationEmailService.sendBookingConfirmation(booking);
+        }
     }
 
     private void validateAppointmentWindow(LocalDateTime appointmentStart) {
@@ -606,7 +706,8 @@ public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> impl
                 .in("status",
                         RentalConstants.BOOKING_STATUS_RESERVED,
                         RentalConstants.BOOKING_STATUS_IN_PROGRESS,
-                        RentalConstants.BOOKING_STATUS_OVERDUE);
+                        RentalConstants.BOOKING_STATUS_OVERDUE,
+                        RentalConstants.BOOKING_STATUS_AWAITING_PAYMENT);
         if (excludeBookingId != null) {
             wrapper.ne("id", excludeBookingId);
         }
@@ -797,6 +898,7 @@ public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> impl
             scooter.setLongitude(store.getLongitude());
             scooter.setLatitude(store.getLatitude());
         }
+        ScooterDisplayMetrics.enrich(scooters);
     }
 
     private Map<Long, Store> loadStores(List<Booking> bookings) {

@@ -3,7 +3,6 @@ package com.greengo.service.impl;
 import com.greengo.domain.AuthSession;
 import com.greengo.domain.User;
 import com.greengo.service.AuthSessionService;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -13,7 +12,6 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
-@ConditionalOnProperty(prefix = "app.redis", name = "enabled", havingValue = "false", matchIfMissing = true)
 public class InMemoryAuthSessionService implements AuthSessionService {
 
     private static final Duration SESSION_TTL = Duration.ofHours(12);

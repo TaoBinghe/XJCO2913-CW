@@ -57,5 +57,11 @@ public class Scooter {
 
     @TableField(exist = false)
     private String storeAddress;
+
+    @TableField(exist = false)
+    private Integer batteryLevel;
+
+    @TableField(exist = false)
+    private BigDecimal remainingRangeKm;
 }
 

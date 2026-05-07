@@ -9,6 +9,7 @@ import com.greengo.mapper.BookingMapper;
 import com.greengo.mapper.PricingPlanMapper;
 import com.greengo.mapper.ScooterMapper;
 import com.greengo.mapper.StoreMapper;
+import com.greengo.service.BookingConfirmationEmailService;
 import com.greengo.service.GeoAddressService;
 import com.greengo.service.impl.BookingServiceImpl;
 import com.greengo.utils.RentalConstants;
@@ -68,6 +69,9 @@ class BookingServiceImplTest {
     @Mock
     private GeoAddressService geoAddressService;
 
+    @Mock
+    private BookingConfirmationEmailService bookingConfirmationEmailService;
+
     private BookingServiceImpl bookingService;
 
     @BeforeEach
@@ -77,6 +81,7 @@ class BookingServiceImplTest {
         ReflectionTestUtils.setField(bookingService, "scooterMapper", scooterMapper);
         ReflectionTestUtils.setField(bookingService, "storeMapper", storeMapper);
         ReflectionTestUtils.setField(bookingService, "geoAddressService", geoAddressService);
+        ReflectionTestUtils.setField(bookingService, "bookingConfirmationEmailService", bookingConfirmationEmailService);
         ReflectionTestUtils.setField(bookingService, "baseMapper", bookingMapper);
         ReflectionTestUtils.setField(bookingService, "clock", FIXED_CLOCK);
         ThreadLocalUtil.set(Map.of("id", USER_ID));
@@ -124,6 +129,7 @@ class BookingServiceImplTest {
         assertEquals(STORE_ID, booking.getStoreId());
         assertEquals("Xipu North Hub", booking.getStoreName());
         assertEquals("DAY_1", booking.getHirePeriod());
+        verify(bookingConfirmationEmailService).sendBookingConfirmation(booking);
     }
 
     @Test
@@ -142,6 +148,7 @@ class BookingServiceImplTest {
 
         assertEquals("Store inventory is fully booked for the selected time", error.getMessage());
         verify(bookingMapper, never()).insert(any(Booking.class));
+        verify(bookingConfirmationEmailService, never()).sendBookingConfirmation(any());
     }
 
     @Test
@@ -191,6 +198,7 @@ class BookingServiceImplTest {
         assertEquals(RentalConstants.SCOOTER_LOCK_STATUS_UNLOCKED, scooter.getLockStatus());
         assertEquals("MINUTE_1", booking.getHirePeriod());
         assertEquals("SC201", booking.getScooterCode());
+        verify(bookingConfirmationEmailService).sendBookingConfirmation(booking);
     }
 
     @Test

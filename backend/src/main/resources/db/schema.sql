@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS `user` (
     `username` VARCHAR(64) NOT NULL COMMENT 'Username',
     `password` VARCHAR(128) NOT NULL COMMENT 'Password',
     `email` VARCHAR(128) DEFAULT NULL COMMENT 'Email',
+    `customer_type` VARCHAR(32) NOT NULL DEFAULT 'REGULAR' COMMENT 'Customer type: REGULAR/STUDENT/SENIOR',
     `role` VARCHAR(32) NOT NULL DEFAULT 'CUSTOMER' COMMENT 'Role: CUSTOMER/MANAGER',
     `status` TINYINT NOT NULL DEFAULT 1 COMMENT 'Status: 0-disabled, 1-enabled',
     `wallet_balance` DECIMAL(10, 2) NOT NULL DEFAULT 0.00 COMMENT 'Wallet balance',
@@ -42,6 +43,7 @@ CREATE TABLE IF NOT EXISTS `scooter` (
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_scooter_code` (`scooter_code`),
     KEY `idx_scooter_store_id` (`store_id`),
+    KEY `idx_scooter_store_mode_status` (`store_id`, `rental_mode`, `status`),
     CONSTRAINT `fk_scooter_store` FOREIGN KEY (`store_id`) REFERENCES `store` (`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Scooter table';
 
@@ -57,6 +59,9 @@ CREATE TABLE IF NOT EXISTS `pricing_plan` (
 CREATE TABLE IF NOT EXISTS `booking` (
     `id` BIGINT NOT NULL AUTO_INCREMENT,
     `user_id` BIGINT NOT NULL COMMENT 'User ID',
+    `customer_name` VARCHAR(128) DEFAULT NULL COMMENT 'Unregistered customer contact name',
+    `customer_email` VARCHAR(128) DEFAULT NULL COMMENT 'Unregistered customer contact email',
+    `created_by_staff_user_id` BIGINT DEFAULT NULL COMMENT 'Staff user ID for unregistered customer bookings',
     `scooter_id` BIGINT DEFAULT NULL COMMENT 'Picked scooter ID after pickup',
     `pricing_plan_id` BIGINT NOT NULL COMMENT 'Pricing plan ID',
     `store_id` BIGINT DEFAULT NULL COMMENT 'Store ID for store pickup bookings',
@@ -82,9 +87,13 @@ CREATE TABLE IF NOT EXISTS `booking` (
     KEY `idx_booking_scooter_id` (`scooter_id`),
     KEY `idx_booking_pricing_plan_id` (`pricing_plan_id`),
     KEY `idx_booking_store_id` (`store_id`),
+    KEY `idx_booking_created_by_staff_user_id` (`created_by_staff_user_id`),
     KEY `idx_booking_status` (`status`),
     KEY `idx_booking_pickup_deadline` (`pickup_deadline`),
+    KEY `idx_booking_user_status` (`user_id`, `status`),
+    KEY `idx_booking_store_window` (`store_id`, `rental_type`, `status`, `start_time`, `end_time`),
     CONSTRAINT `fk_booking_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_booking_staff_user` FOREIGN KEY (`created_by_staff_user_id`) REFERENCES `user` (`id`) ON DELETE RESTRICT,
     CONSTRAINT `fk_booking_scooter` FOREIGN KEY (`scooter_id`) REFERENCES `scooter` (`id`) ON DELETE RESTRICT,
     CONSTRAINT `fk_booking_pricing_plan` FOREIGN KEY (`pricing_plan_id`) REFERENCES `pricing_plan` (`id`) ON DELETE RESTRICT,
     CONSTRAINT `fk_booking_store` FOREIGN KEY (`store_id`) REFERENCES `store` (`id`) ON DELETE RESTRICT
@@ -94,7 +103,11 @@ CREATE TABLE IF NOT EXISTS `payment` (
     `id` BIGINT NOT NULL AUTO_INCREMENT,
     `booking_id` BIGINT NOT NULL COMMENT 'Booking ID',
     `user_id` BIGINT NOT NULL COMMENT 'User ID',
-    `amount` DECIMAL(10, 2) NOT NULL COMMENT 'Payment amount',
+    `original_amount` DECIMAL(10, 2) NOT NULL DEFAULT 0.00 COMMENT 'Original amount before discount',
+    `discount_type` VARCHAR(32) NOT NULL DEFAULT 'NONE' COMMENT 'Discount type: NONE/STUDENT/SENIOR/FREQUENT_USER',
+    `discount_rate` DECIMAL(5, 4) NOT NULL DEFAULT 0.0000 COMMENT 'Discount rate applied to original amount',
+    `discount_amount` DECIMAL(10, 2) NOT NULL DEFAULT 0.00 COMMENT 'Discount amount',
+    `amount` DECIMAL(10, 2) NOT NULL COMMENT 'Final paid amount',
     `status` VARCHAR(32) NOT NULL COMMENT 'Status: SUCCESS/FAILED',
     `payment_method` VARCHAR(32) NOT NULL DEFAULT 'CARD' COMMENT 'Payment method: WALLET/CARD',
     `card_last_four` VARCHAR(4) DEFAULT NULL COMMENT 'Last four digits of card',
@@ -103,6 +116,7 @@ CREATE TABLE IF NOT EXISTS `payment` (
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_booking_id` (`booking_id`),
     KEY `idx_user_id` (`user_id`),
+    KEY `idx_payment_user_status_time` (`user_id`, `status`, `payment_time`),
     CONSTRAINT `fk_payment_booking` FOREIGN KEY (`booking_id`) REFERENCES `booking` (`id`) ON DELETE RESTRICT,
     CONSTRAINT `fk_payment_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Payment table';
@@ -140,6 +154,33 @@ CREATE TABLE IF NOT EXISTS `wallet_transaction` (
     CONSTRAINT `fk_wallet_transaction_booking` FOREIGN KEY (`booking_id`) REFERENCES `booking` (`id`) ON DELETE RESTRICT,
     CONSTRAINT `fk_wallet_transaction_bank_card` FOREIGN KEY (`bank_card_id`) REFERENCES `bank_card` (`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Wallet transaction table';
+
+CREATE TABLE IF NOT EXISTS `feedback_issue` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `user_id` BIGINT NOT NULL COMMENT 'Submitting user ID',
+    `booking_id` BIGINT NOT NULL COMMENT 'Related booking ID',
+    `scooter_id` BIGINT DEFAULT NULL COMMENT 'Related scooter ID when available',
+    `category` VARCHAR(32) NOT NULL COMMENT 'Category: SCOOTER_FAULT/BOOKING/PAYMENT/OTHER',
+    `content` VARCHAR(500) NOT NULL COMMENT 'Short feedback content',
+    `priority` VARCHAR(16) NOT NULL DEFAULT 'LOW' COMMENT 'Priority: LOW/HIGH',
+    `status` VARCHAR(32) NOT NULL DEFAULT 'OPEN' COMMENT 'Status: OPEN/IN_PROGRESS/RESOLVED',
+    `resolution_note` VARCHAR(500) DEFAULT NULL COMMENT 'Admin handling note',
+    `handled_by_user_id` BIGINT DEFAULT NULL COMMENT 'Manager user ID that last handled the issue',
+    `resolved_at` DATETIME DEFAULT NULL COMMENT 'Resolved time',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_feedback_issue_user_id` (`user_id`),
+    KEY `idx_feedback_issue_booking_id` (`booking_id`),
+    KEY `idx_feedback_issue_scooter_id` (`scooter_id`),
+    KEY `idx_feedback_issue_priority` (`priority`),
+    KEY `idx_feedback_issue_status` (`status`),
+    KEY `idx_feedback_issue_handled_by_user_id` (`handled_by_user_id`),
+    CONSTRAINT `fk_feedback_issue_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_feedback_issue_booking` FOREIGN KEY (`booking_id`) REFERENCES `booking` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_feedback_issue_scooter` FOREIGN KEY (`scooter_id`) REFERENCES `scooter` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_feedback_issue_handler` FOREIGN KEY (`handled_by_user_id`) REFERENCES `user` (`id`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Customer feedback and fault issue table';
 
 INSERT INTO `store` (`id`, `name`, `address`, `longitude`, `latitude`, `status`) VALUES
     (1, 'Xipu North Hub', 'Xipu Campus Library North Plaza', 103.981570, 30.768249, 'ENABLED'),

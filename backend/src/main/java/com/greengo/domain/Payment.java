@@ -29,6 +29,14 @@ public class Payment {
 
     private Long userId;
 
+    private BigDecimal originalAmount;
+
+    private String discountType;
+
+    private BigDecimal discountRate;
+
+    private BigDecimal discountAmount;
+
     private BigDecimal amount;
 
     /** Status: SUCCESS / FAILED */
