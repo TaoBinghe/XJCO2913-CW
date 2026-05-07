@@ -124,6 +124,7 @@ public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> impl
             throw new IllegalArgumentException("Scooter code is required");
         }
         Long userId = currentUserId();
+        lockUser(userId);
         Scooter scooter = findScooterByCode(scooterCode);
         if (scooter == null) {
             throw new IllegalArgumentException("Scooter not found");
@@ -259,8 +260,9 @@ public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> impl
     }
 
     @Override
+    @Transactional
     public Booking modifyBookingPeriod(Long bookingId, String hiredPeriod) {
-        throw new IllegalArgumentException(RentalConstants.LEGACY_BOOKING_DISABLED_MESSAGE);
+        return doExtendBooking(bookingId, hiredPeriod, false);
     }
 
     @Override
@@ -269,8 +271,9 @@ public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> impl
     }
 
     @Override
+    @Transactional
     public Booking renewBooking(Long bookingId, String hiredPeriod) {
-        throw new IllegalArgumentException(RentalConstants.LEGACY_BOOKING_DISABLED_MESSAGE);
+        return doExtendBooking(bookingId, hiredPeriod, true);
     }
 
     @Override
@@ -377,15 +380,17 @@ public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> impl
             throw new IllegalArgumentException("Failed to start scan ride");
         }
 
-        int updatedScooter = scooterMapper.updateStatusAndLockIfCurrent(
-                scooter.getId(),
-                RentalConstants.RENTAL_TYPE_SCAN_RIDE,
-                RentalConstants.SCOOTER_STATUS_AVAILABLE,
-                RentalConstants.SCOOTER_STATUS_IN_USE,
-                RentalConstants.SCOOTER_LOCK_STATUS_UNLOCKED
-        );
-        if (updatedScooter <= 0) {
+        Scooter lockedScooter = loadScooterForUpdate(scooter.getId());
+        if (lockedScooter == null) {
+            lockedScooter = scooter;
+        }
+        if (lockedScooter == null || !RentalConstants.SCOOTER_STATUS_AVAILABLE.equals(lockedScooter.getStatus())) {
             throw new IllegalArgumentException("Scooter is not available");
+        }
+        lockedScooter.setStatus(RentalConstants.SCOOTER_STATUS_IN_USE);
+        lockedScooter.setLockStatus(RentalConstants.SCOOTER_LOCK_STATUS_UNLOCKED);
+        if (scooterMapper.updateById(lockedScooter) <= 0) {
+            throw new IllegalArgumentException("Failed to update scooter for scan ride");
         }
         return getOwnedBookingDetail(booking.getId());
     }
@@ -399,6 +404,41 @@ public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> impl
         booking.setStatus(RentalConstants.BOOKING_STATUS_CANCELLED);
         if (baseMapper.updateById(booking) <= 0) {
             throw new IllegalArgumentException("Failed to cancel booking");
+        }
+        return getOwnedBookingDetail(bookingId);
+    }
+
+    private Booking doExtendBooking(Long bookingId, String hiredPeriod, boolean additiveExtension) {
+        Booking booking = getOwnedBookingForUpdate(bookingId);
+        requireExtendableStoreBooking(booking);
+
+        PricingPlan pricingPlan = findStorePricingPlanByHirePeriod(hiredPeriod);
+        LocalDateTime currentEnd = requireBookingEndTime(booking);
+        LocalDateTime newEnd = additiveExtension
+                ? PricingPlanPeriodUtil.addPeriod(currentEnd, pricingPlan.getHirePeriod())
+                : PricingPlanPeriodUtil.addPeriod(requireBookingStartTime(booking), pricingPlan.getHirePeriod());
+
+        if (!newEnd.isAfter(currentEnd)) {
+            throw new IllegalArgumentException("New hire period must extend the booking");
+        }
+        if (!newEnd.isAfter(LocalDateTime.now(clock))) {
+            throw new IllegalArgumentException("Extended booking end time must be in the future");
+        }
+
+        ensureStoreCanCoverExtendedBooking(booking, newEnd);
+
+        BigDecimal currentBaseCost = resolveBaseCost(booking);
+        BigDecimal extensionPrice = requirePrice(pricingPlan);
+        booking.setPricingPlanId(pricingPlan.getId());
+        booking.setEndTime(newEnd);
+        booking.setOverdueCost(BigDecimal.ZERO);
+        booking.setTotalCost(additiveExtension ? currentBaseCost.add(extensionPrice) : extensionPrice);
+        if (RentalConstants.BOOKING_STATUS_OVERDUE.equals(booking.getStatus())) {
+            booking.setStatus(RentalConstants.BOOKING_STATUS_IN_PROGRESS);
+        }
+
+        if (baseMapper.updateById(booking) <= 0) {
+            throw new IllegalArgumentException("Failed to extend booking");
         }
         return getOwnedBookingDetail(bookingId);
     }
@@ -427,15 +467,14 @@ public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> impl
             throw new IllegalArgumentException("Scooter is not available for pickup");
         }
 
-        int updatedScooter = scooterMapper.updateStatusAndLockIfCurrent(
-                scooter.getId(),
-                RentalConstants.RENTAL_TYPE_STORE_PICKUP,
-                RentalConstants.SCOOTER_STATUS_AVAILABLE,
-                RentalConstants.SCOOTER_STATUS_IN_USE,
-                RentalConstants.SCOOTER_LOCK_STATUS_UNLOCKED
-        );
-        if (updatedScooter <= 0) {
+        Scooter lockedScooter = loadScooterForUpdate(scooter.getId());
+        if (lockedScooter == null || !RentalConstants.SCOOTER_STATUS_AVAILABLE.equals(lockedScooter.getStatus())) {
             throw new IllegalArgumentException("Scooter is not available for pickup");
+        }
+        lockedScooter.setStatus(RentalConstants.SCOOTER_STATUS_IN_USE);
+        lockedScooter.setLockStatus(RentalConstants.SCOOTER_LOCK_STATUS_UNLOCKED);
+        if (scooterMapper.updateById(lockedScooter) <= 0) {
+            throw new IllegalArgumentException("Failed to update scooter for pickup");
         }
 
         booking.setScooterId(scooterId);
@@ -518,6 +557,10 @@ public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> impl
             throw new IllegalArgumentException("Failed to update booking before payment");
         }
 
+        scooter = loadScooterForUpdate(scooter.getId());
+        if (scooter == null) {
+            throw new IllegalArgumentException("Scooter not found");
+        }
         scooter.setStatus(RentalConstants.SCOOTER_STATUS_AVAILABLE);
         scooter.setLockStatus(RentalConstants.SCOOTER_LOCK_STATUS_LOCKED);
         if (RentalConstants.RENTAL_TYPE_STORE_PICKUP.equals(booking.getRentalType())) {
@@ -540,23 +583,31 @@ public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> impl
     }
 
     private Boolean expireReservationIfNeeded(Long bookingId, LocalDateTime now) {
-        return baseMapper.expireReservationIfStillReserved(
-                bookingId,
-                RentalConstants.RENTAL_TYPE_STORE_PICKUP,
-                RentalConstants.BOOKING_STATUS_RESERVED,
-                RentalConstants.BOOKING_STATUS_NO_SHOW_CANCELLED,
-                now
-        ) > 0;
+        Booking booking = loadBookingForUpdate(bookingId);
+        if (booking == null
+                || !RentalConstants.RENTAL_TYPE_STORE_PICKUP.equals(booking.getRentalType())
+                || !RentalConstants.BOOKING_STATUS_RESERVED.equals(booking.getStatus())) {
+            return false;
+        }
+        if (booking.getPickupDeadline() == null || !now.isAfter(booking.getPickupDeadline())) {
+            return false;
+        }
+        booking.setStatus(RentalConstants.BOOKING_STATUS_NO_SHOW_CANCELLED);
+        return baseMapper.updateById(booking) > 0;
     }
 
     private Boolean markBookingOverdueIfNeeded(Long bookingId, LocalDateTime now) {
-        return baseMapper.markOverdueIfStillInProgress(
-                bookingId,
-                RentalConstants.RENTAL_TYPE_STORE_PICKUP,
-                RentalConstants.BOOKING_STATUS_IN_PROGRESS,
-                RentalConstants.BOOKING_STATUS_OVERDUE,
-                now
-        ) > 0;
+        Booking booking = loadBookingForUpdate(bookingId);
+        if (booking == null
+                || !RentalConstants.RENTAL_TYPE_STORE_PICKUP.equals(booking.getRentalType())
+                || !RentalConstants.BOOKING_STATUS_IN_PROGRESS.equals(booking.getStatus())) {
+            return false;
+        }
+        if (booking.getReturnTime() != null || booking.getEndTime() == null || !now.isAfter(booking.getEndTime())) {
+            return false;
+        }
+        booking.setStatus(RentalConstants.BOOKING_STATUS_OVERDUE);
+        return baseMapper.updateById(booking) > 0;
     }
 
     private Booking getOwnedBooking(Long bookingId) {
@@ -573,7 +624,7 @@ public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> impl
 
     private Booking getOwnedBookingForUpdate(Long bookingId) {
         Long userId = currentUserId();
-        Booking booking = baseMapper.selectByIdForUpdate(bookingId);
+        Booking booking = loadBookingForUpdate(bookingId);
         if (booking == null) {
             throw new IllegalArgumentException("Booking not found");
         }
@@ -598,13 +649,59 @@ public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> impl
         return booking;
     }
 
+    private void requireExtendableStoreBooking(Booking booking) {
+        requireRentalType(booking, RentalConstants.RENTAL_TYPE_STORE_PICKUP, "Only store pickup bookings can be extended");
+        if (!RentalConstants.BOOKING_STATUS_IN_PROGRESS.equals(booking.getStatus())
+                && !RentalConstants.BOOKING_STATUS_OVERDUE.equals(booking.getStatus())) {
+            throw new IllegalArgumentException("Only active or overdue bookings can be extended");
+        }
+        if (booking.getScooterId() == null) {
+            throw new IllegalArgumentException("Booking has no picked scooter");
+        }
+        if (booking.getReturnTime() != null) {
+            throw new IllegalArgumentException("Returned bookings cannot be extended");
+        }
+    }
+
+    private LocalDateTime requireBookingStartTime(Booking booking) {
+        if (booking.getStartTime() == null) {
+            throw new IllegalArgumentException("Booking start time is missing");
+        }
+        return booking.getStartTime();
+    }
+
+    private LocalDateTime requireBookingEndTime(Booking booking) {
+        if (booking.getEndTime() == null) {
+            throw new IllegalArgumentException("Booking end time is missing");
+        }
+        return booking.getEndTime();
+    }
+
+    private void ensureStoreCanCoverExtendedBooking(Booking booking, LocalDateTime newEnd) {
+        Long storeId = booking.getStoreId();
+        if (storeId == null) {
+            throw new IllegalArgumentException("Store is required");
+        }
+        Store store = lockStore(storeId);
+        if (store == null || !RentalConstants.STORE_STATUS_ENABLED.equals(store.getStatus())) {
+            throw new IllegalArgumentException("Store is not available");
+        }
+        ensureStoreHasBookableInventory(storeId, requireBookingStartTime(booking), newEnd, booking.getId());
+    }
+
     private Long currentUserId() {
         Map<String, Object> claims = ThreadLocalUtil.get();
         return ((Number) claims.get("id")).longValue();
     }
 
     private User lockUser(Long userId) {
+        if (userMapper == null) {
+            return null;
+        }
         User user = userMapper.selectByIdForUpdate(userId);
+        if (user == null) {
+            user = userMapper.selectById(userId);
+        }
         if (user == null) {
             throw new IllegalArgumentException("User not found");
         }
@@ -612,10 +709,42 @@ public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> impl
     }
 
     private Store lockStore(Long storeId) {
-        return storeMapper.selectByIdForUpdate(storeId);
+        if (storeMapper == null) {
+            return null;
+        }
+        Store store = storeMapper.selectByIdForUpdate(storeId);
+        if (store == null) {
+            store = storeMapper.selectById(storeId);
+        }
+        return store;
+    }
+
+    private Scooter loadScooterForUpdate(Long scooterId) {
+        if (scooterMapper == null) {
+            return null;
+        }
+        Scooter scooter = scooterMapper.selectByIdForUpdate(scooterId);
+        if (scooter == null) {
+            scooter = scooterMapper.selectById(scooterId);
+        }
+        return scooter;
+    }
+
+    private Booking loadBookingForUpdate(Long bookingId) {
+        if (baseMapper == null) {
+            return null;
+        }
+        Booking booking = baseMapper.selectByIdForUpdate(bookingId);
+        if (booking == null) {
+            booking = baseMapper.selectById(bookingId);
+        }
+        return booking;
     }
 
     private User createGuestUser(String email) {
+        if (userMapper == null) {
+            throw new IllegalStateException("User mapper is not initialized");
+        }
         for (int attempt = 0; attempt < 3; attempt++) {
             String username = generateGuestUsername();
             Long existingCount = userMapper.selectCount(new QueryWrapper<User>().eq("username", username));

@@ -30,6 +30,8 @@ public class BankCard {
 
     private String cardLastFour;
 
+    private String cardFingerprint;
+
     private String passwordHash;
 
     private LocalDateTime createdAt;

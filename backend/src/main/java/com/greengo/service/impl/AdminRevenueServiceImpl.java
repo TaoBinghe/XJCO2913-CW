@@ -1,5 +1,7 @@
 package com.greengo.service.impl;
 
+import com.greengo.domain.AdminDailyRevenueBucket;
+import com.greengo.domain.AdminDailyRevenueSummary;
 import com.greengo.domain.AdminWeeklyRevenueBucket;
 import com.greengo.domain.AdminWeeklyRevenueSummary;
 import com.greengo.domain.PricingPlan;
@@ -12,6 +14,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.Clock;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -67,6 +70,41 @@ public class AdminRevenueServiceImpl implements AdminRevenueService {
                 .build();
     }
 
+    @Override
+    public AdminDailyRevenueSummary getDailyRevenueSummary() {
+        LocalDate windowEndDate = LocalDate.now(clock);
+        LocalDate windowStartDate = windowEndDate.minusDays(6);
+        LocalDateTime windowStart = windowStartDate.atStartOfDay();
+        LocalDateTime windowEnd = windowEndDate.plusDays(1).atStartOfDay();
+
+        List<AdminDailyRevenueBucket> aggregatedBuckets = paymentMapper.selectDailyRevenueBuckets(windowStart, windowEnd);
+        Map<LocalDate, AdminDailyRevenueBucket> bucketMap = new HashMap<>();
+        if (aggregatedBuckets != null) {
+            aggregatedBuckets.forEach(bucket -> {
+                AdminDailyRevenueBucket normalized = normalizeDailyBucket(bucket);
+                if (normalized.getRevenueDate() != null) {
+                    bucketMap.put(normalized.getRevenueDate(), normalized);
+                }
+            });
+        }
+
+        List<AdminDailyRevenueBucket> buckets = new ArrayList<>();
+        BigDecimal totalRevenue = BigDecimal.ZERO;
+        for (LocalDate date = windowStartDate; !date.isAfter(windowEndDate); date = date.plusDays(1)) {
+            AdminDailyRevenueBucket bucket = bucketMap.getOrDefault(date, zeroDailyBucket(date));
+            buckets.add(bucket);
+            totalRevenue = totalRevenue.add(bucket.getTotalRevenue());
+        }
+
+        return AdminDailyRevenueSummary.builder()
+                .windowStartDate(windowStartDate)
+                .windowEndDate(windowEndDate)
+                .buckets(buckets)
+                .totalRevenue(totalRevenue)
+                .mostPopularRevenueDate(resolveMostPopularRevenueDate(buckets))
+                .build();
+    }
+
     private AdminWeeklyRevenueBucket normalizeBucket(AdminWeeklyRevenueBucket bucket) {
         return AdminWeeklyRevenueBucket.builder()
                 .hirePeriod(bucket.getHirePeriod())
@@ -78,6 +116,22 @@ public class AdminRevenueServiceImpl implements AdminRevenueService {
     private AdminWeeklyRevenueBucket zeroBucket(String hirePeriod) {
         return AdminWeeklyRevenueBucket.builder()
                 .hirePeriod(hirePeriod)
+                .orderCount(0L)
+                .totalRevenue(BigDecimal.ZERO)
+                .build();
+    }
+
+    private AdminDailyRevenueBucket normalizeDailyBucket(AdminDailyRevenueBucket bucket) {
+        return AdminDailyRevenueBucket.builder()
+                .revenueDate(bucket.getRevenueDate())
+                .orderCount(bucket.getOrderCount() == null ? 0L : bucket.getOrderCount())
+                .totalRevenue(bucket.getTotalRevenue() == null ? BigDecimal.ZERO : bucket.getTotalRevenue())
+                .build();
+    }
+
+    private AdminDailyRevenueBucket zeroDailyBucket(LocalDate revenueDate) {
+        return AdminDailyRevenueBucket.builder()
+                .revenueDate(revenueDate)
                 .orderCount(0L)
                 .totalRevenue(BigDecimal.ZERO)
                 .build();
@@ -103,6 +157,28 @@ public class AdminRevenueServiceImpl implements AdminRevenueService {
             }
         }
         return best == null ? null : best.getHirePeriod();
+    }
+
+    private LocalDate resolveMostPopularRevenueDate(List<AdminDailyRevenueBucket> buckets) {
+        AdminDailyRevenueBucket best = null;
+        for (AdminDailyRevenueBucket bucket : buckets) {
+            if (bucket.getOrderCount() == null || bucket.getOrderCount() <= 0) {
+                continue;
+            }
+            if (best == null) {
+                best = bucket;
+                continue;
+            }
+            if (bucket.getOrderCount() > best.getOrderCount()) {
+                best = bucket;
+                continue;
+            }
+            if (bucket.getOrderCount().equals(best.getOrderCount())
+                    && bucket.getTotalRevenue().compareTo(best.getTotalRevenue()) > 0) {
+                best = bucket;
+            }
+        }
+        return best == null ? null : best.getRevenueDate();
     }
 }
 

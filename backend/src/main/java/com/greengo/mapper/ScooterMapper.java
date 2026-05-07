@@ -3,9 +3,13 @@ package com.greengo.mapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.greengo.domain.Scooter;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
 public interface ScooterMapper extends BaseMapper<Scooter> {
+
+    @Select("SELECT * FROM scooter WHERE id = #{id} FOR UPDATE")
+    Scooter selectByIdForUpdate(@Param("id") Long id);
 
     @Update("""
             UPDATE scooter

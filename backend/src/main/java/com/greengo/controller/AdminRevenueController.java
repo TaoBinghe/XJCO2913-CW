@@ -1,5 +1,6 @@
 package com.greengo.controller;
 
+import com.greengo.domain.AdminDailyRevenueSummary;
 import com.greengo.domain.AdminWeeklyRevenueSummary;
 import com.greengo.domain.Result;
 import com.greengo.service.AdminRevenueService;
@@ -23,5 +24,12 @@ public class AdminRevenueController {
         }
         return Result.success(adminRevenueService.getWeeklyRevenueSummary());
     }
-}
 
+    @GetMapping("/daily")
+    public Result<AdminDailyRevenueSummary> dailyRevenue() {
+        if (!AuthUtil.isAdmin()) {
+            return Result.error("Forbidden: admin only");
+        }
+        return Result.success(adminRevenueService.getDailyRevenueSummary());
+    }
+}

@@ -9,17 +9,6 @@ public class Md5Util {
     // Hex chars for byte to hex
     protected static char hexDigits[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
 
-    protected static MessageDigest messagedigest = null;
-
-    static {
-        try {
-            messagedigest = MessageDigest.getInstance("MD5");
-        } catch (NoSuchAlgorithmException nsaex) {
-            System.err.println(Md5Util.class.getName() + " init failed, MD5 not supported.");
-            nsaex.printStackTrace();
-        }
-    }
-
     // Get MD5 hex string of input
     public static String getMD5String(String s) {
         return getMD5String(s.getBytes());
@@ -34,8 +23,12 @@ public class Md5Util {
 
     // Get MD5 hex string from bytes
     public static String getMD5String(byte[] bytes) {
-        messagedigest.update(bytes);
-        return bufferToHex(messagedigest.digest());
+        try {
+            MessageDigest messageDigest = MessageDigest.getInstance("MD5");
+            return bufferToHex(messageDigest.digest(bytes));
+        } catch (NoSuchAlgorithmException nsaex) {
+            throw new IllegalStateException("MD5 not supported", nsaex);
+        }
     }
 
     private static String bufferToHex(byte bytes[]) {

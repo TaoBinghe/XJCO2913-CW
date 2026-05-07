@@ -1,6 +1,7 @@
 package com.greengo.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.greengo.domain.AdminDailyRevenueBucket;
 import com.greengo.domain.AdminWeeklyRevenueBucket;
 import com.greengo.domain.Payment;
 import org.apache.ibatis.annotations.Param;
@@ -25,6 +26,20 @@ public interface PaymentMapper extends BaseMapper<Payment> {
             """)
     List<AdminWeeklyRevenueBucket> selectWeeklyRevenueBuckets(@Param("windowStart") LocalDateTime windowStart,
                                                              @Param("windowEnd") LocalDateTime windowEnd);
+
+    @Select("""
+            SELECT DATE(p.payment_time) AS revenueDate,
+                   COUNT(*) AS orderCount,
+                   COALESCE(SUM(p.amount), 0) AS totalRevenue
+            FROM payment p
+            WHERE p.status = 'SUCCESS'
+              AND p.payment_time >= #{windowStart}
+              AND p.payment_time < #{windowEnd}
+            GROUP BY DATE(p.payment_time)
+            ORDER BY DATE(p.payment_time)
+            """)
+    List<AdminDailyRevenueBucket> selectDailyRevenueBuckets(@Param("windowStart") LocalDateTime windowStart,
+                                                           @Param("windowEnd") LocalDateTime windowEnd);
 
     @Select("""
             SELECT COALESCE(SUM(

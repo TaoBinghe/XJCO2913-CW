@@ -1,5 +1,7 @@
 package com.greengo.impl;
 
+import com.greengo.domain.AdminDailyRevenueBucket;
+import com.greengo.domain.AdminDailyRevenueSummary;
 import com.greengo.domain.AdminWeeklyRevenueBucket;
 import com.greengo.domain.AdminWeeklyRevenueSummary;
 import com.greengo.mapper.PaymentMapper;
@@ -16,6 +18,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -133,6 +136,65 @@ class AdminRevenueServiceImplTest {
         assertEquals(2, summary.getBuckets().size());
         assertEquals(0L, summary.getBuckets().get(0).getOrderCount());
         assertEquals(BigDecimal.ZERO, summary.getBuckets().get(0).getTotalRevenue());
+    }
+
+    @Test
+    void getDailyRevenueSummaryReturnsSevenCalendarDaysWithZeroBuckets() {
+        when(paymentMapper.selectDailyRevenueBuckets(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
+                .thenReturn(List.of(
+                        AdminDailyRevenueBucket.builder()
+                                .revenueDate(LocalDate.of(2026, 4, 4))
+                                .orderCount(2L)
+                                .totalRevenue(new BigDecimal("45.00"))
+                                .build(),
+                        AdminDailyRevenueBucket.builder()
+                                .revenueDate(LocalDate.of(2026, 4, 8))
+                                .orderCount(1L)
+                                .totalRevenue(new BigDecimal("100.00"))
+                                .build()
+                ));
+
+        AdminDailyRevenueSummary summary = adminRevenueService.getDailyRevenueSummary();
+
+        ArgumentCaptor<LocalDateTime> startCaptor = ArgumentCaptor.forClass(LocalDateTime.class);
+        ArgumentCaptor<LocalDateTime> endCaptor = ArgumentCaptor.forClass(LocalDateTime.class);
+        verify(paymentMapper).selectDailyRevenueBuckets(startCaptor.capture(), endCaptor.capture());
+
+        assertEquals(LocalDateTime.of(2026, 4, 3, 0, 0), startCaptor.getValue());
+        assertEquals(LocalDateTime.of(2026, 4, 10, 0, 0), endCaptor.getValue());
+        assertEquals(LocalDate.of(2026, 4, 3), summary.getWindowStartDate());
+        assertEquals(LocalDate.of(2026, 4, 9), summary.getWindowEndDate());
+        assertEquals(7, summary.getBuckets().size());
+        assertEquals(LocalDate.of(2026, 4, 3), summary.getBuckets().get(0).getRevenueDate());
+        assertEquals(0L, summary.getBuckets().get(0).getOrderCount());
+        assertEquals(BigDecimal.ZERO, summary.getBuckets().get(0).getTotalRevenue());
+        assertEquals(LocalDate.of(2026, 4, 4), summary.getBuckets().get(1).getRevenueDate());
+        assertEquals(2L, summary.getBuckets().get(1).getOrderCount());
+        assertEquals(new BigDecimal("45.00"), summary.getBuckets().get(1).getTotalRevenue());
+        assertEquals(LocalDate.of(2026, 4, 8), summary.getBuckets().get(5).getRevenueDate());
+        assertEquals(new BigDecimal("145.00"), summary.getTotalRevenue());
+        assertEquals(LocalDate.of(2026, 4, 4), summary.getMostPopularRevenueDate());
+    }
+
+    @Test
+    void getDailyRevenueSummaryUsesRevenueAsTieBreakerForPopularDate() {
+        when(paymentMapper.selectDailyRevenueBuckets(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
+                .thenReturn(List.of(
+                        AdminDailyRevenueBucket.builder()
+                                .revenueDate(LocalDate.of(2026, 4, 5))
+                                .orderCount(1L)
+                                .totalRevenue(new BigDecimal("30.00"))
+                                .build(),
+                        AdminDailyRevenueBucket.builder()
+                                .revenueDate(LocalDate.of(2026, 4, 6))
+                                .orderCount(1L)
+                                .totalRevenue(new BigDecimal("100.00"))
+                                .build()
+                ));
+
+        AdminDailyRevenueSummary summary = adminRevenueService.getDailyRevenueSummary();
+
+        assertEquals(LocalDate.of(2026, 4, 6), summary.getMostPopularRevenueDate());
     }
 }
 
