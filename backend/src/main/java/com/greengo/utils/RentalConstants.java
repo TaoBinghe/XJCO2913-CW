@@ -18,6 +18,15 @@ public final class RentalConstants {
 
     public static final String PAYMENT_STATUS_SUCCESS = "SUCCESS";
 
+    public static final String CUSTOMER_TYPE_REGULAR = "REGULAR";
+    public static final String CUSTOMER_TYPE_STUDENT = "STUDENT";
+    public static final String CUSTOMER_TYPE_SENIOR = "SENIOR";
+
+    public static final String DISCOUNT_TYPE_NONE = "NONE";
+    public static final String DISCOUNT_TYPE_STUDENT = "STUDENT";
+    public static final String DISCOUNT_TYPE_SENIOR = "SENIOR";
+    public static final String DISCOUNT_TYPE_FREQUENT_USER = "FREQUENT_USER";
+
     public static final String WALLET_TRANSACTION_TYPE_RECHARGE = "RECHARGE";
     public static final String WALLET_TRANSACTION_TYPE_BOOKING_PAYMENT = "BOOKING_PAYMENT";
 

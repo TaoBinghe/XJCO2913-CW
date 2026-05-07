@@ -10,11 +10,9 @@ import com.greengo.mapper.BookingMapper;
 import com.greengo.mapper.ScooterMapper;
 import com.greengo.mapper.StoreMapper;
 import com.greengo.service.ScooterService;
-import com.greengo.utils.RedisCacheNames;
 import com.greengo.utils.RentalConstants;
+import com.greengo.utils.ScooterDisplayMetrics;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -51,7 +49,6 @@ public class ScooterServiceImpl extends ServiceImpl<ScooterMapper, Scooter> impl
     private BookingMapper bookingMapper;
 
     @Override
-    @Cacheable(value = RedisCacheNames.SCOOTER_LIST, key = "'admin'")
     public List<Scooter> listAll() {
         List<Scooter> scooters = baseMapper.selectList(new LambdaQueryWrapper<Scooter>().orderByAsc(Scooter::getId));
         enrichScooters(scooters);
@@ -59,13 +56,14 @@ public class ScooterServiceImpl extends ServiceImpl<ScooterMapper, Scooter> impl
     }
 
     @Override
-    @Cacheable(value = RedisCacheNames.SCOOTER_LIST, key = "'map'")
     public List<Scooter> listMapScooters() {
         LambdaQueryWrapper<Scooter> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Scooter::getRentalMode, RentalConstants.RENTAL_TYPE_SCAN_RIDE)
                 .eq(Scooter::getStatus, RentalConstants.SCOOTER_STATUS_AVAILABLE)
                 .orderByAsc(Scooter::getId);
-        return baseMapper.selectList(wrapper);
+        List<Scooter> scooters = baseMapper.selectList(wrapper);
+        ScooterDisplayMetrics.enrich(scooters);
+        return scooters;
     }
 
     @Override
@@ -78,7 +76,6 @@ public class ScooterServiceImpl extends ServiceImpl<ScooterMapper, Scooter> impl
     }
 
     @Override
-    @CacheEvict(value = RedisCacheNames.SCOOTER_LIST, allEntries = true)
     public boolean addScooter(Scooter scooter) {
         if (scooter == null || scooter.getScooterCode() == null || scooter.getScooterCode().isBlank()) {
             return false;
@@ -110,7 +107,6 @@ public class ScooterServiceImpl extends ServiceImpl<ScooterMapper, Scooter> impl
     }
 
     @Override
-    @CacheEvict(value = RedisCacheNames.SCOOTER_LIST, allEntries = true)
     public boolean updateScooter(Scooter scooter) {
         if (scooter == null || scooter.getId() == null) {
             return false;
@@ -173,7 +169,6 @@ public class ScooterServiceImpl extends ServiceImpl<ScooterMapper, Scooter> impl
     }
 
     @Override
-    @CacheEvict(value = RedisCacheNames.SCOOTER_LIST, allEntries = true)
     public boolean deleteScooter(Long id) {
         Scooter scooter = baseMapper.selectById(id);
         if (scooter == null || RentalConstants.SCOOTER_STATUS_IN_USE.equals(scooter.getStatus())) {
@@ -214,6 +209,7 @@ public class ScooterServiceImpl extends ServiceImpl<ScooterMapper, Scooter> impl
             scooter.setLongitude(store.getLongitude());
             scooter.setLatitude(store.getLatitude());
         }
+        ScooterDisplayMetrics.enrich(scooters);
     }
 
     private Map<Long, Store> loadStoreMap(List<Scooter> scooters) {

@@ -7,6 +7,18 @@ spring:
     url: ${DB_URL:jdbc:mysql://127.0.0.1:3306/xjco2913?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&characterEncoding=utf8}
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:20041230Tbh}
+  mail:
+    host: ${MAIL_HOST:smtp.qq.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:1741893518@qq.com}
+    password: ${MAIL_PASSWORD:upfdortpsdanejha}
+    from: ${MAIL_FROM:no-reply@green-go.local}
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_SMTP_AUTH:true}
+          starttls:
+            enable: ${MAIL_SMTP_STARTTLS_ENABLE:true}
 
 mybatis-plus:
   configuration:

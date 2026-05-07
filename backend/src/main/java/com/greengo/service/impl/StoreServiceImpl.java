@@ -12,10 +12,8 @@ import com.greengo.mapper.StoreMapper;
 import com.greengo.service.GeoAddressService;
 import com.greengo.service.StoreService;
 import com.greengo.utils.PricingPlanPeriodUtil;
-import com.greengo.utils.RedisCacheNames;
 import com.greengo.utils.RentalConstants;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -82,7 +80,6 @@ public class StoreServiceImpl implements StoreService {
 
     @Override
     @Transactional
-    @CacheEvict(value = RedisCacheNames.SCOOTER_LIST, allEntries = true)
     public boolean createStore(Store store) {
         if (!isValidStore(store, false)) {
             return false;
@@ -93,7 +90,6 @@ public class StoreServiceImpl implements StoreService {
 
     @Override
     @Transactional
-    @CacheEvict(value = RedisCacheNames.SCOOTER_LIST, allEntries = true)
     public boolean updateStore(Long id, Store store) {
         if (id == null || store == null) {
             return false;
@@ -131,7 +127,6 @@ public class StoreServiceImpl implements StoreService {
 
     @Override
     @Transactional
-    @CacheEvict(value = RedisCacheNames.SCOOTER_LIST, allEntries = true)
     public boolean deleteStore(Long id) {
         if (id == null || storeMapper.selectById(id) == null) {
             return false;

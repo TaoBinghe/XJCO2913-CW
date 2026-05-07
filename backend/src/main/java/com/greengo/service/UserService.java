@@ -9,7 +9,11 @@ public interface UserService {
 
     User findByUserName(String username);
 
-    void register(String username, String password);
+    default void register(String username, String password, String email) {
+        register(username, password, email, null);
+    }
+
+    void register(String username, String password, String email, String customerType);
 
     User login(String username, String password);
 

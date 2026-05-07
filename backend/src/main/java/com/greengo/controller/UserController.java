@@ -19,11 +19,14 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 // User API: register, login, my orders
 @RestController
 @RequestMapping("/user")
 public class UserController {
+
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
 
     @Autowired
     private UserService userService;
@@ -36,12 +39,22 @@ public class UserController {
 
     // Register new user
     @PostMapping("/register")
-    public Result<?> register(String username, String password) {
+    public Result<?> register(@RequestParam String username,
+                              @RequestParam String password,
+                              @RequestParam String email,
+                              @RequestParam(required = false) String customerType) {
+        if (!isValidEmail(email)) {
+            return Result.error("Valid email is required");
+        }
         // Check if username already exists
         User u = userService.findByUserName(username);
         if (u == null) {
-            userService.register(username, password);
-            return Result.success();
+            try {
+                userService.register(username, password, email, customerType);
+                return Result.success();
+            } catch (IllegalArgumentException e) {
+                return Result.error(e.getMessage());
+            }
         } else {
             return Result.error("Username already exists");
         }
@@ -90,6 +103,10 @@ public class UserController {
         Long userId = ((Number) claims.get("id")).longValue();
         List<Booking> list = bookingService.listBookingsByUserId(userId);
         return Result.<List<Booking>>success(list);
+    }
+
+    private boolean isValidEmail(String email) {
+        return email != null && EMAIL_PATTERN.matcher(email.trim()).matches();
     }
 }
 

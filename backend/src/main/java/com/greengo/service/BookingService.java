@@ -18,6 +18,12 @@ public interface BookingService {
 
     Booking createStoreBooking(Long storeId, LocalDateTime appointmentStart, String hiredPeriod);
 
+    Booking createStoreBookingForUnregistered(String customerName,
+                                              String customerEmail,
+                                              Long storeId,
+                                              LocalDateTime appointmentStart,
+                                              String hiredPeriod);
+
     Booking cancelStoreBooking(Long bookingId);
 
     Booking startScanRide(String scooterCode);
