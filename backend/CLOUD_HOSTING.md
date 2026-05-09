@@ -12,13 +12,13 @@ Use the prebuilt JAR deployment flow for cloud hosting:
 2. Confirm the packaged JAR exists:
    - `target/backend-0.0.1-SNAPSHOT.jar`
 3. Upload the `backend/` directory to cloud hosting, not `front_admin/`.
-4. Use [backend/Dockerfile](c:/Users/ASUS/Desktop/wechat/backend/Dockerfile:1) as the image build entry.
+4. Use [Dockerfile](Dockerfile:1) as the image build entry.
 
 Why this works:
 
 - The Maven package step already builds `front_admin` from `../front_admin`
 - The admin UI is copied into the Spring Boot JAR under `static/admin-ui`
-- [backend/Dockerfile](c:/Users/ASUS/Desktop/wechat/backend/Dockerfile:8) only needs the finished JAR and starts it with `java -jar`
+- [Dockerfile](Dockerfile:8) only needs the finished JAR and starts it with `java -jar`
 
 Do not upload `front_admin/` by itself. It is not an independent cloud hosting service and does not need its own Dockerfile.
 
@@ -28,7 +28,7 @@ Set these variables on the `green-go` cloud hosting service before restarting th
 
 ```env
 PORT=80
-DB_URL=jdbc:mysql://<cloud-mysql-private-host>:3306/xjco2913?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8
+DB_URL=jdbc:mysql://<cloud-mysql-host>:<cloud-mysql-port>/xjco2913?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&characterEncoding=utf8
 DB_USERNAME=<db-username>
 DB_PASSWORD=<db-password>
 AMAP_WEB_SERVICE_KEY=<amap-web-service-key>
@@ -41,14 +41,32 @@ MAIL_SMTP_AUTH=true
 MAIL_SMTP_STARTTLS_ENABLE=true
 ```
 
-Use the values in [cloud-hosting.env.example](c:/Users/ASUS/Desktop/wechat/backend/cloud-hosting.env.example:1) as the template. Do not leave `DB_URL` on the default `localhost:3306` value when the service runs in cloud hosting.
+Use the values in [cloud-hosting.env.example](cloud-hosting.env.example:1) as the template. Do not leave `DB_URL` on the default `localhost:3306` value when the service runs in cloud hosting.
+
+The JDBC URL must include the database name. This is valid:
+
+```env
+DB_URL=jdbc:mysql://10.23.101.185:3306/xjco2913?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&characterEncoding=utf8
+```
+
+This is not enough because it does not select a database:
+
+```env
+DB_URL=jdbc:mysql://10.23.101.185:3306/
+```
+
+Use the private address only when the cloud hosting service and MySQL instance are in the same reachable private network or VPC. If private network access has not been configured, use the public endpoint instead and allow the cloud hosting egress IP in the MySQL security group or allowlist:
+
+```env
+DB_URL=jdbc:mysql://sh-cynosdbmysql-grp-rqdx430c.sql.tencentcdb.com:25766/xjco2913?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&characterEncoding=utf8
+```
 
 ## Database Initialization
 
 If the cloud MySQL database is empty, import these SQL files in order:
 
-1. [schema.sql](c:/Users/ASUS/Desktop/wechat/backend/src/main/resources/db/schema.sql:1)
-2. [scooter_location_migration.sql](c:/Users/ASUS/Desktop/wechat/backend/src/main/resources/db/scooter_location_migration.sql:1)
+1. [schema.sql](src/main/resources/db/schema.sql:1)
+2. [scooter_location_migration.sql](src/main/resources/db/scooter_location_migration.sql:1)
 
 The database name expected by the application is `xjco2913`.
 

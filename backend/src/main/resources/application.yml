@@ -4,12 +4,18 @@ spring:
     url: ${DB_URL:jdbc:mysql://127.0.0.1:3306/xjco2913?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&characterEncoding=utf8}
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:root}
+    hikari:
+      max-lifetime: 600000
+      idle-timeout: 300000
+      keepalive-time: 120000
+      connection-timeout: 30000
+      validation-timeout: 5000
   mail:
     host: ${MAIL_HOST:smtp.qq.com}
     port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME:1741893518@qq.com}
-    password: ${MAIL_PASSWORD:upfdortpsdanejha}
-    from: ${MAIL_FROM:${MAIL_USERNAME:1741893518@qq.com}}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    from: ${MAIL_FROM:${MAIL_USERNAME:}}
     properties:
       mail:
         smtp:
@@ -24,4 +30,4 @@ server:
   port: ${PORT:9090}
 
 amap:
-  web-service-key: ${AMAP_WEB_SERVICE_KEY:b80cd8c8c349779a5392f5f076ca7f97}
+  web-service-key: ${AMAP_WEB_SERVICE_KEY:}
