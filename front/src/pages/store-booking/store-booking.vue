@@ -15,14 +15,26 @@
         <view class="filter-grid">
           <view class="filter-field">
             <text class="input-label">Date</text>
-            <picker mode="date" :value="appointmentDate" @change="handleDateChange">
+            <picker
+              mode="date"
+              :value="appointmentDate"
+              :start="minAppointmentDate"
+              :end="maxAppointmentDate"
+              @change="handleDateChange"
+            >
               <view class="picker-field">{{ appointmentDate }}</view>
             </picker>
           </view>
 
           <view class="filter-field">
             <text class="input-label">Time</text>
-            <picker mode="time" :value="appointmentTime" @change="handleTimeChange">
+            <picker
+              mode="time"
+              :value="appointmentTime"
+              :start="minAppointmentTime"
+              end="23:59"
+              @change="handleTimeChange"
+            >
               <view class="picker-field">{{ appointmentTime }}</view>
             </picker>
           </view>
@@ -150,13 +162,34 @@ function pad(value) {
   return String(value).padStart(2, '0')
 }
 
+function formatPickerDate(date) {
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+}
+
+function formatPickerTime(date) {
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+function getCurrentMinuteDate() {
+  const date = new Date()
+  date.setSeconds(0, 0)
+  return date
+}
+
+function parsePickerDateTime(dateValue, timeValue) {
+  const [year, month, day] = String(dateValue || '').split('-').map(Number)
+  const [hour, minute] = String(timeValue || '').split(':').map(Number)
+  if ([year, month, day, hour, minute].some(value => !Number.isFinite(value))) {
+    return null
+  }
+  return new Date(year, month - 1, day, hour, minute, 0, 0)
+}
+
 function createDefaultAppointment() {
-  const baseDate = new Date()
-  baseDate.setDate(baseDate.getDate() + 1)
-  baseDate.setHours(10, 0, 0, 0)
+  const baseDate = getCurrentMinuteDate()
   return {
-    date: `${baseDate.getFullYear()}-${pad(baseDate.getMonth() + 1)}-${pad(baseDate.getDate())}`,
-    time: `${pad(baseDate.getHours())}:${pad(baseDate.getMinutes())}`
+    date: formatPickerDate(baseDate),
+    time: formatPickerTime(baseDate)
   }
 }
 
@@ -180,6 +213,19 @@ export default {
   computed: {
     appointmentStart() {
       return `${this.appointmentDate}T${this.appointmentTime}:00`
+    },
+    minAppointmentDate() {
+      return formatPickerDate(getCurrentMinuteDate())
+    },
+    maxAppointmentDate() {
+      const date = getCurrentMinuteDate()
+      date.setDate(date.getDate() + 30)
+      return formatPickerDate(date)
+    },
+    minAppointmentTime() {
+      return this.appointmentDate === this.minAppointmentDate
+        ? formatPickerTime(getCurrentMinuteDate())
+        : '00:00'
     },
     selectedPlan() {
       return this.plans.find(plan => plan.hirePeriod === this.selectedPeriod) || null
@@ -228,6 +274,9 @@ export default {
       }
     },
     async loadStores() {
+      if (this.isLoggedIn) {
+        this.normalizeAppointmentWindow()
+      }
       this.storesLoading = true
       try {
         const params = this.isLoggedIn && this.selectedPlan
@@ -254,11 +303,26 @@ export default {
     },
     handleDateChange(event) {
       this.appointmentDate = event.detail.value
+      this.normalizeAppointmentWindow()
       this.loadStores()
     },
     handleTimeChange(event) {
       this.appointmentTime = event.detail.value
+      if (this.normalizeAppointmentWindow()) {
+        uni.showToast({ title: 'Adjusted to the earliest available time', icon: 'none' })
+      }
       this.loadStores()
+    },
+    normalizeAppointmentWindow() {
+      const minimum = getCurrentMinuteDate()
+      const selected = parsePickerDateTime(this.appointmentDate, this.appointmentTime)
+      if (selected && selected >= minimum) {
+        return false
+      }
+
+      this.appointmentDate = formatPickerDate(minimum)
+      this.appointmentTime = formatPickerTime(minimum)
+      return true
     },
     formatPeriod(period) {
       return formatPeriod(period)
@@ -322,6 +386,11 @@ export default {
       }
       if (Number(store.bookableInventory || 0) <= 0) {
         uni.showToast({ title: 'This store is fully booked for the selected window', icon: 'none' })
+        return
+      }
+      if (this.normalizeAppointmentWindow()) {
+        uni.showToast({ title: 'Please choose a time from now onward', icon: 'none' })
+        this.loadStores()
         return
       }
 

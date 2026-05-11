@@ -30,6 +30,7 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -804,9 +805,9 @@ public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> impl
         if (appointmentStart == null) {
             throw new IllegalArgumentException("Appointment start is required");
         }
-        LocalDateTime now = LocalDateTime.now(clock);
+        LocalDateTime now = LocalDateTime.now(clock).truncatedTo(ChronoUnit.MINUTES);
         if (appointmentStart.isBefore(now)) {
-            throw new IllegalArgumentException("Appointment start must be in the future");
+            throw new IllegalArgumentException("Appointment start must be current time or later");
         }
         if (appointmentStart.isAfter(now.plusDays(30))) {
             throw new IllegalArgumentException("Appointment start cannot be more than 30 days ahead");

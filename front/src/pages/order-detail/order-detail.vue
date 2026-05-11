@@ -316,6 +316,12 @@ import {
   LOCATION_ERROR_CODES
 } from '@/utils/location'
 
+function parseLocalDateTime(value) {
+  if (!value) return NaN
+  const parsed = new Date(String(value).replace(' ', 'T')).getTime()
+  return Number.isFinite(parsed) ? parsed : NaN
+}
+
 export default {
   data() {
     return {
@@ -343,7 +349,9 @@ export default {
       plansLoading: false,
       extensionMode: 'renew',
       extensionPlanIndex: 0,
-      extending: false
+      extending: false,
+      nowTime: Date.now(),
+      pickupTimer: null
     }
   },
   computed: {
@@ -397,7 +405,17 @@ export default {
       return !!this.order && this.order.rentalType === 'STORE_PICKUP' && this.order.status === 'RESERVED'
     },
     canPickup() {
-      return !!this.order && this.order.rentalType === 'STORE_PICKUP' && this.order.status === 'RESERVED'
+      if (!this.order || this.order.rentalType !== 'STORE_PICKUP' || this.order.status !== 'RESERVED') {
+        return false
+      }
+
+      const startTime = parseLocalDateTime(this.order.startTime)
+      const deadline = parseLocalDateTime(this.order.pickupDeadline)
+      if (!Number.isFinite(startTime) || !Number.isFinite(deadline)) {
+        return false
+      }
+
+      return this.nowTime >= startTime && this.nowTime <= deadline
     },
     canLock() {
       return !!this.order
@@ -463,9 +481,29 @@ export default {
       uni.navigateTo({ url: '/pages/login/login' })
       return
     }
+    this.startPickupClock()
     this.loadDetail()
   },
+  onHide() {
+    this.stopPickupClock()
+  },
+  onUnload() {
+    this.stopPickupClock()
+  },
   methods: {
+    startPickupClock() {
+      this.stopPickupClock()
+      this.nowTime = Date.now()
+      this.pickupTimer = setInterval(() => {
+        this.nowTime = Date.now()
+      }, 30000)
+    },
+    stopPickupClock() {
+      if (this.pickupTimer) {
+        clearInterval(this.pickupTimer)
+        this.pickupTimer = null
+      }
+    },
     async loadDetail() {
       if (!this.bookingId) {
         this.order = null
@@ -499,6 +537,12 @@ export default {
       this.paymentReceipt = this.order && this.order.status === 'COMPLETED'
         ? getPaymentReceipt(this.order.id)
         : this.paymentReceipt
+      if (this.canPay) {
+        this.loadWallet()
+      }
+      if (this.canExtend) {
+        this.loadPlans()
+      }
     },
     applySettlementResult(result) {
       if (!result) return
