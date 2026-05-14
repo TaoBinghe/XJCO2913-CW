@@ -93,7 +93,7 @@ image {
   right: -220rpx;
   width: 560rpx;
   height: 560rpx;
-  background: radial-gradient(circle, rgba(210, 255, 38, 0.28) 0%, rgba(210, 255, 38, 0) 72%);
+  background: radial-gradient(circle, rgba(74, 124, 82, 0.22) 0%, rgba(74, 124, 82, 0) 72%);
 }
 
 .theme-glow-bottom {
@@ -101,7 +101,7 @@ image {
   bottom: 120rpx;
   width: 420rpx;
   height: 420rpx;
-  background: radial-gradient(circle, rgba(164, 240, 103, 0.18) 0%, rgba(164, 240, 103, 0) 70%);
+  background: radial-gradient(circle, rgba(74, 124, 82, 0.14) 0%, rgba(74, 124, 82, 0) 70%);
 }
 
 .theme-hero {
@@ -112,7 +112,7 @@ image {
   display: block;
   font-size: 24rpx;
   letter-spacing: 6rpx;
-  color: #89a54c;
+  color: #4a7c52;
 }
 
 .theme-headline {
@@ -147,8 +147,8 @@ image {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #efff84 0%, #e2ff6b 100%);
-  color: #111111;
+  background: #4a7c52;
+  color: #ffffff;
   border: none;
   border-radius: 54rpx;
   height: 96rpx;
@@ -157,7 +157,7 @@ image {
   font-weight: 700;
   letter-spacing: 1rpx;
   text-align: center;
-  box-shadow: 0 20rpx 44rpx rgba(226, 255, 107, 0.24);
+  box-shadow: 0 20rpx 44rpx rgba(74, 124, 82, 0.28);
 }
 
 .btn-primary::after {
@@ -165,7 +165,7 @@ image {
 }
 
 .btn-primary:active {
-  background: linear-gradient(135deg, #e6f973 0%, #d8f55a 100%);
+  background: #3f6946;
 }
 
 .btn-outline {
@@ -277,17 +277,17 @@ image {
 
 .status-active {
   background: #effad7;
-  color: #5d8c22;
+  color: #4a7c52;
 }
 
 .status-in_progress {
   background: #effad7;
-  color: #5d8c22;
+  color: #4a7c52;
 }
 
 .status-activated {
   background: #effad7;
-  color: #5d8c22;
+  color: #4a7c52;
 }
 
 .status-overdue {
@@ -317,7 +317,7 @@ image {
 
 .status-available {
   background: #effad7;
-  color: #5d8c22;
+  color: #4a7c52;
 }
 
 .status-in_use {

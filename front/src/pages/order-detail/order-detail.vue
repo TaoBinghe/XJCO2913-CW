@@ -615,7 +615,7 @@ export default {
     handleExtensionPlanChange(event) {
       this.extensionPlanIndex = Number(event.detail.value || 0)
     },
-    async confirmAction(title, content, confirmColor = '#5d8c22') {
+    async confirmAction(title, content, confirmColor = '#4a7c52') {
       return new Promise((resolve) => {
         uni.showModal({
           title,
@@ -732,7 +732,7 @@ export default {
         this.order.rentalType === 'SCAN_RIDE'
           ? 'This will upload your current coordinates and return the scooter. Payment is completed after return.'
           : 'This will return the store pickup scooter. Payment is completed after return.',
-        '#5d8c22'
+        '#4a7c52'
       )
       if (!confirmed) return
 
@@ -858,7 +858,7 @@ export default {
 
 .status-marker-active {
   background: #effad7;
-  color: #5d8c22;
+  color: #4a7c52;
 }
 
 .status-marker-overdue {
@@ -946,7 +946,7 @@ export default {
 
 .info-value-strong {
   font-weight: 700;
-  color: #5d8c22;
+  color: #4a7c52;
 }
 
 .text-positive {
@@ -1029,8 +1029,8 @@ export default {
 }
 
 .payment-tab-active {
-  background: #efff84;
-  color: #111111;
+  background: #4a7c52;
+  color: #ffffff;
 }
 
 .payment-card-fields {

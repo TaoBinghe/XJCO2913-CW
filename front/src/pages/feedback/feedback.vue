@@ -421,7 +421,7 @@ export default {
 
 .resolution-label {
   display: block;
-  color: #5d8c22;
+  color: #4a7c52;
   font-size: 23rpx;
   font-weight: 700;
 }

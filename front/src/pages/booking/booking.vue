@@ -42,7 +42,7 @@
             <cover-view v-if="routeInfo" class="sheet-info-row">
               <cover-view class="sheet-info-label">Walk</cover-view>
               <cover-view class="sheet-info-value">
-                {{ formatDistance(routeInfo.distanceMeters) }} · {{ formatDuration(routeInfo.durationSeconds) }}
+                {{ formatDistance(routeInfo.distanceMeters) }} � {{ formatDuration(routeInfo.durationSeconds) }}
               </cover-view>
             </cover-view>
           </cover-view>
@@ -79,7 +79,7 @@
 
     <view class="booking-topbar" :style="bookingTopbarStyle">
       <view class="booking-back-button" @click="handlePageBack">
-        <text class="booking-back-icon">‹</text>
+        <text class="booking-back-icon">&lt;</text>
       </view>
       <view class="booking-search-shell" :style="bookingSearchStyle">
         <input
@@ -175,7 +175,7 @@ export default {
             color: scooter.status === 'AVAILABLE' ? '#111111' : '#6f776a',
             fontSize: 11,
             borderRadius: 12,
-            bgColor: this.selectedScooterId === scooter.id ? '#efff84' : '#ffffff',
+            bgColor: this.selectedScooterId === scooter.id ? '#e7f0e9' : '#ffffff',
             padding: 6,
             display: this.selectedScooterId === scooter.id ? 'ALWAYS' : 'BYCLICK'
           }
@@ -200,7 +200,7 @@ export default {
             color: '#111111',
             fontSize: 11,
             borderRadius: 12,
-            bgColor: '#efff84',
+            bgColor: '#e7f0e9',
             padding: 6,
             display: 'ALWAYS'
           }
@@ -219,8 +219,8 @@ export default {
           longitude: Number(this.selectedScooter.longitude),
           radius: 38,
           strokeWidth: 2,
-          color: '#94c83d66',
-          fillColor: '#efff8440'
+          color: '#4a7c5266',
+          fillColor: '#4a7c5240'
         }
       ]
     },
@@ -471,7 +471,7 @@ export default {
             latitude: Number(point.latitude),
             longitude: Number(point.longitude)
           })),
-          color: '#5d8c22',
+          color: '#4a7c52',
           width: 6,
           arrowLine: true
         }]
@@ -628,8 +628,8 @@ export default {
   height: 58rpx;
   padding: 0 18rpx;
   border-radius: 18rpx;
-  background: #efff84;
-  color: #111111;
+  background: #4a7c52;
+  color: #ffffff;
   font-size: 24rpx;
   font-weight: 700;
   line-height: 58rpx;
@@ -647,7 +647,7 @@ export default {
 }
 
 .sheet-kicker {
-  color: #89a54c;
+  color: #4a7c52;
   font-size: 22rpx;
   line-height: 1.2;
   letter-spacing: 2rpx;
@@ -731,8 +731,8 @@ export default {
 }
 
 .sheet-button-primary {
-  background: #efff84;
-  color: #111111;
+  background: #4a7c52;
+  color: #ffffff;
 }
 
 .sheet-button-disabled {

@@ -200,7 +200,7 @@ export default {
   right: -220rpx;
   width: 560rpx;
   height: 560rpx;
-  background: radial-gradient(circle, rgba(210, 255, 38, 0.32) 0%, rgba(210, 255, 38, 0) 72%);
+  background: radial-gradient(circle, rgba(74, 124, 82, 0.22) 0%, rgba(74, 124, 82, 0) 72%);
 }
 
 .auth-glow-bottom {
@@ -208,7 +208,7 @@ export default {
   bottom: 120rpx;
   width: 420rpx;
   height: 420rpx;
-  background: radial-gradient(circle, rgba(164, 240, 103, 0.18) 0%, rgba(164, 240, 103, 0) 70%);
+  background: radial-gradient(circle, rgba(74, 124, 82, 0.14) 0%, rgba(74, 124, 82, 0) 70%);
 }
 
 .auth-copy {
@@ -219,7 +219,7 @@ export default {
   display: block;
   font-size: 24rpx;
   letter-spacing: 6rpx;
-  color: #89a54c;
+  color: #4a7c52;
 }
 
 .auth-title {
@@ -296,16 +296,16 @@ export default {
   padding: 0;
   border: none;
   border-radius: 54rpx;
-  background: linear-gradient(135deg, #efff84 0%, #e2ff6b 100%);
-  color: #111111;
+  background: #4a7c52;
+  color: #ffffff;
   font-size: 34rpx;
   font-weight: 700;
   letter-spacing: 2rpx;
-  box-shadow: 0 20rpx 44rpx rgba(226, 255, 107, 0.24);
+  box-shadow: 0 20rpx 44rpx rgba(74, 124, 82, 0.28);
 }
 
 .auth-submit:active {
-  background: linear-gradient(135deg, #e6f973 0%, #d8f55a 100%);
+  background: #3f6946;
 }
 
 .auth-links {

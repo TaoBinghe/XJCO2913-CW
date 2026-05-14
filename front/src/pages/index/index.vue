@@ -197,7 +197,7 @@ export default {
   padding: 0 26rpx;
   border-radius: 999rpx;
   background: #effad7;
-  color: #5d8c22;
+  color: #4a7c52;
   font-size: 24rpx;
   font-weight: 700;
 }
@@ -278,7 +278,7 @@ export default {
   padding: 0 22rpx;
   border-radius: 999rpx;
   background: #effad7;
-  color: #5d8c22;
+  color: #4a7c52;
   font-size: 28rpx;
   font-weight: 700;
 }

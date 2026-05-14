@@ -497,7 +497,7 @@ export default {
 
 .plan-chip-price {
   font-size: 24rpx;
-  color: #5d8c22;
+  color: #4a7c52;
   font-weight: 700;
 }
 
