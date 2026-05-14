@@ -419,18 +419,20 @@ public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> impl
                 ? PricingPlanPeriodUtil.addPeriod(currentEnd, pricingPlan.getHirePeriod())
                 : PricingPlanPeriodUtil.addPeriod(requireBookingStartTime(booking), pricingPlan.getHirePeriod());
 
-        if (!newEnd.isAfter(currentEnd)) {
+        if (additiveExtension && !newEnd.isAfter(currentEnd)) {
             throw new IllegalArgumentException("New hire period must extend the booking");
         }
         if (!newEnd.isAfter(LocalDateTime.now(clock))) {
-            throw new IllegalArgumentException("Extended booking end time must be in the future");
+            throw new IllegalArgumentException("Booking end time must be in the future");
         }
 
         ensureStoreCanCoverExtendedBooking(booking, newEnd);
 
         BigDecimal currentBaseCost = resolveBaseCost(booking);
         BigDecimal extensionPrice = requirePrice(pricingPlan);
-        booking.setPricingPlanId(pricingPlan.getId());
+        if (!additiveExtension) {
+            booking.setPricingPlanId(pricingPlan.getId());
+        }
         booking.setEndTime(newEnd);
         booking.setOverdueCost(BigDecimal.ZERO);
         booking.setTotalCost(additiveExtension ? currentBaseCost.add(extensionPrice) : extensionPrice);

@@ -78,11 +78,8 @@
               <text class="issue-meta">Order #{{ issue.bookingId }} · {{ formatTime(issue.createdAt) }}</text>
             </view>
             <view class="issue-tags">
-              <text class="issue-tag" :class="'priority-' + String(issue.priority || '').toLowerCase()">
-                {{ issue.priority }}
-              </text>
-              <text class="issue-tag" :class="'issue-status-' + String(issue.status || '').toLowerCase()">
-                {{ issue.status }}
+              <text class="issue-tag" :class="issueResolutionClass(issue)">
+                {{ issueResolutionLabel(issue) }}
               </text>
             </view>
           </view>
@@ -149,8 +146,8 @@ export default {
       if (!this.issues.length) {
         return 'No submitted issues yet.'
       }
-      const highCount = this.issues.filter(issue => issue.priority === 'HIGH').length
-      return `${this.issues.length} total, ${highCount} high priority.`
+      const resolvedCount = this.issues.filter(issue => this.isIssueResolved(issue)).length
+      return `${this.issues.length} total, ${resolvedCount} resolved.`
     }
   },
   onLoad(options) {
@@ -202,6 +199,15 @@ export default {
     },
     handleCategoryChange(event) {
       this.selectedCategoryIndex = Number(event.detail.value || 0)
+    },
+    isIssueResolved(issue) {
+      return String(issue?.status || '').toUpperCase() === 'RESOLVED'
+    },
+    issueResolutionLabel(issue) {
+      return this.isIssueResolved(issue) ? 'Resolved' : 'Unresolved'
+    },
+    issueResolutionClass(issue) {
+      return this.isIssueResolved(issue) ? 'issue-status-resolved' : 'issue-status-unresolved'
     },
     async handleSubmit() {
       if (this.submitting) {
@@ -379,24 +385,9 @@ export default {
   text-align: center;
 }
 
-.priority-high {
-  background: #fff0ed;
-  color: #c85c55;
-}
-
-.priority-low {
-  background: #f2f4ef;
-  color: #66715f;
-}
-
-.issue-status-open {
+.issue-status-unresolved {
   background: #fff5db;
   color: #b98224;
-}
-
-.issue-status-in_progress {
-  background: #e8f1ff;
-  color: #2463d6;
 }
 
 .issue-status-resolved {

@@ -203,14 +203,14 @@
             <view
               class="payment-tab"
               :class="{ 'payment-tab-active': extensionMode === 'renew' }"
-              @click="extensionMode = 'renew'"
+              @click="setExtensionMode('renew')"
             >
               Renew
             </view>
             <view
               class="payment-tab"
               :class="{ 'payment-tab-active': extensionMode === 'modify' }"
-              @click="extensionMode = 'modify'"
+              @click="setExtensionMode('modify')"
             >
               Modify Period
             </view>
@@ -228,7 +228,7 @@
               {{ extensionMode === 'renew' ? 'Renew Ride' : 'Modify Period' }}
             </button>
           </template>
-          <view v-else class="inline-empty">No pricing plans are available right now.</view>
+          <view v-else class="inline-empty">{{ extensionEmptyText }}</view>
         </view>
 
         <view v-if="order" class="card feedback-entry-card">
@@ -303,6 +303,7 @@ import { getWalletSummary } from '@/api/wallet'
 import { payBooking } from '@/api/payment'
 import { getMyOrders } from '@/api/user'
 import {
+  addHirePeriodToDate,
   buildBookingViewModel,
   formatCurrency,
   formatPeriod,
@@ -459,7 +460,11 @@ export default {
         : 'Select a card'
     },
     extensionPlans() {
-      return sortPricingPlans(this.plans)
+      const plans = sortPricingPlans(this.plans)
+      if (this.extensionMode === 'modify') {
+        return plans.filter(plan => this.canModifyToPlan(plan))
+      }
+      return plans.filter(plan => this.canRenewWithPlan(plan))
     },
     extensionPlanLabels() {
       return this.extensionPlans.map(plan => `${formatPeriod(plan.hirePeriod)} · ${formatCurrency(plan.price)}`)
@@ -471,6 +476,14 @@ export default {
       return this.selectedExtensionPlan
         ? this.extensionPlanLabels[this.extensionPlanIndex]
         : 'Select a plan'
+    },
+    extensionEmptyText() {
+      if (!this.plans.length) {
+        return 'No pricing plans are available right now.'
+      }
+      return this.extensionMode === 'modify'
+        ? 'No period can keep this ride active from now.'
+        : 'No renewal option can extend this ride into the future.'
     }
   },
   onLoad(options) {
@@ -519,6 +532,7 @@ export default {
         this.paymentReceipt = this.order && this.order.status === 'COMPLETED'
           ? getPaymentReceipt(this.order.id)
           : null
+        this.normalizeExtensionPlanIndex()
         if (this.canPay) {
           this.loadWallet()
         }
@@ -537,6 +551,7 @@ export default {
       this.paymentReceipt = this.order && this.order.status === 'COMPLETED'
         ? getPaymentReceipt(this.order.id)
         : this.paymentReceipt
+      this.normalizeExtensionPlanIndex()
       if (this.canPay) {
         this.loadWallet()
       }
@@ -585,11 +600,10 @@ export default {
       try {
         const res = await getReservationPricingPlans()
         this.plans = sortPricingPlans(res.data || [])
-        if (this.extensionPlanIndex >= this.plans.length) {
-          this.extensionPlanIndex = 0
-        }
+        this.normalizeExtensionPlanIndex()
       } catch (e) {
         this.plans = []
+        this.extensionPlanIndex = 0
       } finally {
         this.plansLoading = false
       }
@@ -611,6 +625,30 @@ export default {
     },
     handlePaymentCardChange(event) {
       this.paymentForm.cardIndex = Number(event.detail.value || 0)
+    },
+    setExtensionMode(mode) {
+      this.extensionMode = mode
+      this.normalizeExtensionPlanIndex()
+    },
+    canRenewWithPlan(plan) {
+      if (!this.order || !plan?.hirePeriod) return false
+      const currentEnd = parseLocalDateTime(this.order.endTime)
+      const newEnd = addHirePeriodToDate(this.order.endTime, plan.hirePeriod)
+      return Number.isFinite(currentEnd)
+        && Number.isFinite(newEnd)
+        && newEnd > currentEnd
+        && newEnd > Date.now()
+    },
+    canModifyToPlan(plan) {
+      if (!this.order || !plan?.hirePeriod) return false
+      const newEnd = addHirePeriodToDate(this.order.startTime, plan.hirePeriod)
+      return Number.isFinite(newEnd) && newEnd > Date.now()
+    },
+    normalizeExtensionPlanIndex() {
+      const planCount = this.extensionPlans.length
+      if (!planCount || this.extensionPlanIndex >= planCount) {
+        this.extensionPlanIndex = 0
+      }
     },
     handleExtensionPlanChange(event) {
       this.extensionPlanIndex = Number(event.detail.value || 0)
@@ -795,6 +833,9 @@ export default {
     },
     async handleExtend() {
       if (!this.order || !this.selectedExtensionPlan || this.extending) {
+        if (!this.selectedExtensionPlan) {
+          uni.showToast({ title: 'Please choose an available plan', icon: 'none' })
+        }
         return
       }
       this.extending = true

@@ -295,8 +295,9 @@ class BookingServiceImplTest {
     }
 
     @Test
-    void renewBookingExtendsActiveStoreBookingAndAddsSelectedPlanCost() {
+    void renewBookingExtendsActiveStoreBookingAndAddsSelectedPlanCostWithoutReplacingBasePlan() {
         Booking booking = inProgressBooking();
+        PricingPlan originalPlan = pricingPlan(2L, "DAY_1", "30.00");
         PricingPlan extensionPlan = pricingPlan(3L, "HOUR_4", "18.00");
         Store store = enabledStore();
         Scooter scooter = storePickupScooterInUse();
@@ -309,7 +310,7 @@ class BookingServiceImplTest {
         when(bookingMapper.updateById(booking)).thenReturn(1);
         when(storeMapper.selectBatchIds(any())).thenReturn(List.of(store));
         when(scooterMapper.selectBatchIds(any())).thenReturn(List.of(scooter));
-        when(pricingPlanMapper.selectBatchIds(any())).thenReturn(List.of(extensionPlan));
+        when(pricingPlanMapper.selectBatchIds(any())).thenReturn(List.of(originalPlan));
 
         Booking renewed = bookingService.renewBooking(BOOKING_ID, "HOUR_4");
 
@@ -317,8 +318,8 @@ class BookingServiceImplTest {
         assertEquals(new BigDecimal("48.00"), booking.getTotalCost());
         assertEquals(BigDecimal.ZERO, booking.getOverdueCost());
         assertEquals(RentalConstants.BOOKING_STATUS_IN_PROGRESS, booking.getStatus());
-        assertEquals(3L, booking.getPricingPlanId());
-        assertEquals("HOUR_4", renewed.getHirePeriod());
+        assertEquals(2L, booking.getPricingPlanId());
+        assertEquals("DAY_1", renewed.getHirePeriod());
         verify(bookingMapper).updateById(booking);
     }
 
@@ -388,6 +389,31 @@ class BookingServiceImplTest {
         assertEquals(new BigDecimal("100.00"), modified.getTotalCost());
         assertEquals(4L, modified.getPricingPlanId());
         assertEquals("WEEK_1", modified.getHirePeriod());
+    }
+
+    @Test
+    void modifyBookingPeriodCanShortenCurrentWindowWhenSelectedEndIsStillFuture() {
+        Booking booking = inProgressBooking();
+        booking.setEndTime(LocalDateTime.of(2026, 4, 15, 14, 0));
+        PricingPlan shorterPlan = pricingPlan(5L, "HOUR_2", "12.00");
+        Store store = enabledStore();
+
+        when(bookingMapper.selectById(BOOKING_ID)).thenReturn(booking);
+        when(pricingPlanMapper.selectOne(any())).thenReturn(shorterPlan);
+        when(storeMapper.selectById(STORE_ID)).thenReturn(store);
+        when(scooterMapper.selectCount(any())).thenReturn(2L);
+        when(bookingMapper.selectCount(any())).thenReturn(0L);
+        when(bookingMapper.updateById(booking)).thenReturn(1);
+        when(storeMapper.selectBatchIds(any())).thenReturn(List.of(store));
+        when(scooterMapper.selectBatchIds(any())).thenReturn(List.of(storePickupScooterInUse()));
+        when(pricingPlanMapper.selectBatchIds(any())).thenReturn(List.of(shorterPlan));
+
+        Booking modified = bookingService.modifyBookingPeriod(BOOKING_ID, "HOUR_2");
+
+        assertEquals(LocalDateTime.of(2026, 4, 15, 11, 0), modified.getEndTime());
+        assertEquals(new BigDecimal("12.00"), modified.getTotalCost());
+        assertEquals(5L, modified.getPricingPlanId());
+        assertEquals("HOUR_2", modified.getHirePeriod());
     }
 
     @Test

@@ -41,12 +41,75 @@ export function parseHirePeriod(period) {
   }
 }
 
+function parseLocalDateTime(value) {
+  if (!value) return NaN
+  const parsed = new Date(String(value).replace(' ', 'T')).getTime()
+  return Number.isFinite(parsed) ? parsed : NaN
+}
+
+export function addHirePeriodToDate(baseValue, period) {
+  const parsed = parseHirePeriod(period)
+  const baseTime = parseLocalDateTime(baseValue)
+  if (!parsed || !Number.isFinite(baseTime)) return NaN
+
+  const date = new Date(baseTime)
+  if (parsed.unit === 'MINUTE') date.setMinutes(date.getMinutes() + parsed.value)
+  if (parsed.unit === 'HOUR') date.setHours(date.getHours() + parsed.value)
+  if (parsed.unit === 'DAY') date.setDate(date.getDate() + parsed.value)
+  if (parsed.unit === 'WEEK') date.setDate(date.getDate() + (parsed.value * 7))
+  if (parsed.unit === 'MONTH') date.setMonth(date.getMonth() + parsed.value)
+  return date.getTime()
+}
+
 export function formatPeriod(period) {
   const parsed = parseHirePeriod(period)
   if (!parsed) return period || '-'
 
   const config = DURATION_UNIT_CONFIG[parsed.unit]
   return `${parsed.value} ${parsed.value === 1 ? config.singular : config.plural}`
+}
+
+function formatDurationFromMinutes(totalMinutes, short = false) {
+  if (!Number.isFinite(totalMinutes) || totalMinutes <= 0) return '-'
+
+  let remaining = Math.max(1, Math.round(totalMinutes))
+  const units = [
+    { key: 'WEEK', minutes: 10080 },
+    { key: 'DAY', minutes: 1440 },
+    { key: 'HOUR', minutes: 60 },
+    { key: 'MINUTE', minutes: 1 }
+  ]
+  const parts = []
+
+  units.forEach(({ key, minutes }) => {
+    const value = Math.floor(remaining / minutes)
+    if (!value) return
+    remaining -= value * minutes
+    const config = DURATION_UNIT_CONFIG[key]
+    parts.push(short ? `${value}${config.short}` : `${value} ${value === 1 ? config.singular : config.plural}`)
+  })
+
+  return parts.slice(0, 2).join(' ')
+}
+
+function getBookingDurationMinutes(booking) {
+  const startTime = parseLocalDateTime(booking?.startTime)
+  const endTime = parseLocalDateTime(booking?.endTime)
+  if (!Number.isFinite(startTime) || !Number.isFinite(endTime) || endTime <= startTime) {
+    return NaN
+  }
+  return Math.round((endTime - startTime) / 60000)
+}
+
+function formatBookingHirePeriod(booking, short = false) {
+  if (booking?.rentalType === 'STORE_PICKUP') {
+    const durationMinutes = getBookingDurationMinutes(booking)
+    if (Number.isFinite(durationMinutes)) {
+      return formatDurationFromMinutes(durationMinutes, short)
+    }
+  }
+
+  return short ? formatPeriodBadge(booking?.hirePeriod) : formatPeriod(booking?.hirePeriod)
 }
 
 export function formatPeriodBadge(period) {
@@ -175,8 +238,8 @@ export function buildBookingViewModel(booking) {
     displayTitle: getBookingTitle(booking || {}),
     displayLocation: getBookingLocation(booking || {}),
     timelineLabel: getBookingTimelineLabel(booking || {}),
-    hirePeriodLabel: formatPeriod(booking?.hirePeriod),
-    hirePeriodBadge: formatPeriodBadge(booking?.hirePeriod),
+    hirePeriodLabel: formatBookingHirePeriod(booking || {}),
+    hirePeriodBadge: formatBookingHirePeriod(booking || {}, true),
     totalCostValue: Number(booking?.totalCost || 0),
     overdueCostValue: Number(booking?.overdueCost || 0)
   }

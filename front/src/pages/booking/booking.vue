@@ -1,6 +1,7 @@
 <template>
   <view class="booking-screen">
     <map
+      id="scanRideMap"
       class="booking-fullscreen-map"
       :latitude="mapCenter.latitude"
       :longitude="mapCenter.longitude"
@@ -79,7 +80,7 @@
 
     <view class="booking-topbar" :style="bookingTopbarStyle">
       <view class="booking-back-button" @click="handlePageBack">
-        <text class="booking-back-icon">&lt;</text>
+        <view class="booking-back-icon"></view>
       </view>
       <view class="booking-search-shell" :style="bookingSearchStyle">
         <input
@@ -113,6 +114,7 @@ const DEFAULT_CENTER = {
   latitude: 30.76732,
   longitude: 103.98212
 }
+const MAP_ID = 'scanRideMap'
 const USER_MARKER_ID = 900000001
 
 function parseScooterCode(rawValue) {
@@ -357,14 +359,38 @@ export default {
       this.userLocation = userLocation
 
       if (shouldCenter) {
-        this.mapCenter = { ...userLocation }
-        this.mapScale = 17
+        this.centerMapOnLocation(userLocation, 17)
       }
+    },
+    centerMapOnLocation(location, scale = 17) {
+      if (!this.hasCoordinates(location)) {
+        return
+      }
+
+      const center = {
+        latitude: Number(location.latitude),
+        longitude: Number(location.longitude)
+      }
+      this.mapCenter = { ...center }
+      this.mapScale = scale
+
+      this.$nextTick(() => {
+        if (typeof uni.createMapContext !== 'function') {
+          return
+        }
+
+        const mapContext = uni.createMapContext(MAP_ID, this)
+        if (mapContext && typeof mapContext.moveToLocation === 'function') {
+          mapContext.moveToLocation({
+            latitude: center.latitude,
+            longitude: center.longitude
+          })
+        }
+      })
     },
     recenterToUser() {
       if (this.userLocation) {
-        this.mapCenter = { ...this.userLocation }
-        this.mapScale = 17
+        this.centerMapOnLocation(this.userLocation, 17)
         return
       }
 
@@ -401,8 +427,7 @@ export default {
     handleMarkerTap(event) {
       if (Number(event.detail.markerId) === USER_MARKER_ID) {
         if (this.userLocation) {
-          this.mapCenter = { ...this.userLocation }
-          this.mapScale = 17
+          this.centerMapOnLocation(this.userLocation, 17)
         }
         return
       }
@@ -596,10 +621,12 @@ export default {
 }
 
 .booking-back-icon {
-  color: #111111;
-  font-size: 48rpx;
-  font-weight: 700;
-  line-height: 1;
+  width: 22rpx;
+  height: 22rpx;
+  margin-left: 8rpx;
+  border-left: 5rpx solid #111111;
+  border-bottom: 5rpx solid #111111;
+  transform: rotate(45deg);
 }
 
 .booking-search-shell {
