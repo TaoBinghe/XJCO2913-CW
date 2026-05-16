@@ -3,7 +3,7 @@
     <div class="page-header">
       <div>
         <h2 class="page-heading">Dashboard</h2>
-        <p class="page-copy">Sprint 3 admin summary for stores, fleet, pricing, and weekly revenue.</p>
+        <p class="page-copy">Sprint 4 admin summary for stores, fleet, pricing, guest bookings, feedback, and revenue.</p>
       </div>
       <el-button :loading="loading" @click="loadDashboardData">
         <el-icon><Refresh /></el-icon>
@@ -42,20 +42,20 @@
             <el-icon :size="26"><Money /></el-icon>
           </div>
           <div class="stat-copy">
-            <div class="stat-label">Weekly Revenue</div>
-            <div class="stat-value">{{ formatCurrency(totalRevenue) }}</div>
+            <div class="stat-label">7-Day Revenue</div>
+            <div class="stat-value">{{ formatCurrency(dailyTotalRevenue) }}</div>
           </div>
         </el-card>
       </el-col>
 
       <el-col :xs="24" :sm="12" :xl="6">
         <el-card shadow="hover" class="stat-card">
-          <div class="stat-icon stat-icon-purple">
-            <el-icon :size="26"><Histogram /></el-icon>
+          <div class="stat-icon stat-icon-danger">
+            <el-icon :size="26"><User /></el-icon>
           </div>
           <div class="stat-copy">
-            <div class="stat-label">Most Popular Plan</div>
-            <div class="stat-value stat-value-small">{{ mostPopularLabel }}</div>
+            <div class="stat-label">High Priority Issues</div>
+            <div class="stat-value">{{ highPriorityCount }}</div>
           </div>
         </el-card>
       </el-col>
@@ -66,7 +66,7 @@
         <el-card class="quick-actions-card">
           <template #header>
             <div class="card-header">
-              <span class="card-title">Sprint 3 Actions</span>
+              <span class="card-title">Sprint 4 Actions</span>
               <span class="card-note">Jump straight into the key admin workflows.</span>
             </div>
           </template>
@@ -88,6 +88,14 @@
               <el-icon><Histogram /></el-icon>
               Review Revenue
             </el-button>
+            <el-button type="primary" plain class="action-btn" @click="router.push('/bookings')">
+              <el-icon><Odometer /></el-icon>
+              Guest Bookings
+            </el-button>
+            <el-button type="danger" plain class="action-btn" @click="router.push('/feedback')">
+              <el-icon><User /></el-icon>
+              Feedback Issues
+            </el-button>
             <el-button plain class="action-btn" @click="router.push('/users')">
               <el-icon><User /></el-icon>
               View Users ({{ userCount }})
@@ -100,26 +108,26 @@
         <el-card class="revenue-window-card" v-loading="loading">
           <template #header>
             <div class="card-header">
-              <span class="card-title">Weekly Revenue Window</span>
-              <span class="card-note">The same source of truth used by the dedicated revenue page.</span>
+              <span class="card-title">Daily Revenue Window</span>
+              <span class="card-note">The latest 7 natural days grouped by payment date.</span>
             </div>
           </template>
 
           <div class="window-row">
             <span class="window-label">Window Start</span>
-            <span class="window-value">{{ formatDateTime(revenueSummary?.windowStart) }}</span>
+            <span class="window-value">{{ dailyRevenueSummary?.windowStartDate || '-' }}</span>
           </div>
           <div class="window-row">
             <span class="window-label">Window End</span>
-            <span class="window-value">{{ formatDateTime(revenueSummary?.windowEnd) }}</span>
+            <span class="window-value">{{ dailyRevenueSummary?.windowEndDate || '-' }}</span>
           </div>
           <div class="window-row">
-            <span class="window-label">Orders in Window</span>
-            <span class="window-value">{{ totalOrders }}</span>
+            <span class="window-label">Orders in 7 Days</span>
+            <span class="window-value">{{ dailyTotalOrders }}</span>
           </div>
           <div class="window-row">
-            <span class="window-label">Most Popular Period</span>
-            <span class="window-value">{{ mostPopularLabel }}</span>
+            <span class="window-label">Most Popular Date</span>
+            <span class="window-value">{{ dailyRevenueSummary?.mostPopularRevenueDate || 'No activity yet' }}</span>
           </div>
         </el-card>
       </el-col>
@@ -227,11 +235,14 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
+  getDailyRevenueSummary,
   getPricingPlanList,
   getWeeklyRevenueSummary,
+  listHighPriorityFeedbackIssues,
   listScooters,
   listStores,
   listUsers,
+  type AdminDailyRevenueSummary,
   type AdminWeeklyRevenueSummary,
   type PricingPlanDto
 } from '@/api/admin'
@@ -254,32 +265,37 @@ const userCount = ref(0)
 const planCount = ref(0)
 const plans = ref<PricingPlanDto[]>([])
 const revenueSummary = ref<AdminWeeklyRevenueSummary | null>(null)
+const dailyRevenueSummary = ref<AdminDailyRevenueSummary | null>(null)
+const highPriorityCount = ref(0)
 
 const revenueBuckets = computed(() => normalizeRevenueBuckets(revenueSummary.value?.buckets))
-const totalRevenue = computed(() => sumRevenue(revenueBuckets.value))
-const totalOrders = computed(() => sumOrders(revenueBuckets.value))
 const maxRevenue = computed(() => Math.max(...revenueBuckets.value.map(bucket => bucket.totalRevenue), 0))
-const mostPopularLabel = computed(() => {
-  return revenueSummary.value?.mostPopularHirePeriod
-    ? formatPeriod(revenueSummary.value.mostPopularHirePeriod)
-    : 'No activity yet'
-})
 const revenueChartItems = computed(() => {
   return revenueBuckets.value.map((bucket) => ({
     ...bucket,
     revenuePercent: maxRevenue.value > 0 ? (bucket.totalRevenue / maxRevenue.value) * 100 : 0
   }))
 })
+const dailyBuckets = computed(() => {
+  return (dailyRevenueSummary.value?.buckets || []).map(bucket => ({
+    orderCount: Number(bucket.orderCount || 0),
+    totalRevenue: Number(bucket.totalRevenue || 0)
+  }))
+})
+const dailyTotalOrders = computed(() => sumOrders(dailyBuckets.value))
+const dailyTotalRevenue = computed(() => Number(dailyRevenueSummary.value?.totalRevenue ?? sumRevenue(dailyBuckets.value)))
 
 async function loadDashboardData() {
   loading.value = true
   try {
-    const [scootersRes, storesRes, usersRes, plansRes, revenueRes] = await Promise.all([
+    const [scootersRes, storesRes, usersRes, plansRes, revenueRes, dailyRevenueRes, highIssuesRes] = await Promise.all([
       listScooters(),
       listStores(),
       listUsers(),
       getPricingPlanList(),
-      getWeeklyRevenueSummary()
+      getWeeklyRevenueSummary(),
+      getDailyRevenueSummary(),
+      listHighPriorityFeedbackIssues()
     ])
 
     scooterCount.value = (scootersRes.data || []).length
@@ -288,6 +304,8 @@ async function loadDashboardData() {
     plans.value = sortPlansByPeriod(plansRes.data || [])
     planCount.value = plans.value.length
     revenueSummary.value = revenueRes.data || null
+    dailyRevenueSummary.value = dailyRevenueRes.data || null
+    highPriorityCount.value = (highIssuesRes.data || []).length
   } catch {
     scooterCount.value = 0
     storeCount.value = 0
@@ -295,6 +313,8 @@ async function loadDashboardData() {
     plans.value = []
     planCount.value = 0
     revenueSummary.value = null
+    dailyRevenueSummary.value = null
+    highPriorityCount.value = 0
   } finally {
     loading.value = false
   }
@@ -369,6 +389,11 @@ onMounted(() => {
 .stat-icon-purple {
   background: #f3edff;
   color: #7758d1;
+}
+
+.stat-icon-danger {
+  background: #fff0ed;
+  color: #c85c55;
 }
 
 .stat-copy {

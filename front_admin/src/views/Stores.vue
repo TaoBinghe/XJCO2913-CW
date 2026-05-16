@@ -3,7 +3,7 @@
     <div class="page-header">
       <div>
         <h2 class="page-heading">Store Management</h2>
-        <p class="page-copy">Create and maintain Sprint 3 pickup stores, inventory visibility, and map coordinates.</p>
+        <p class="page-copy">Create and maintain pickup stores, inventory visibility, and map coordinates.</p>
       </div>
       <div class="header-actions">
         <el-button :loading="loading" @click="loadStores">

@@ -114,8 +114,6 @@ public class FeedbackIssueServiceImpl implements FeedbackIssueService {
         String category = normalizeCategory(request.getCategory());
         String content = normalizeContent(request.getContent());
         String priority = resolvePriority(content);
-        String status = PRIORITY_HIGH.equals(priority) ? STATUS_OPEN : STATUS_RESOLVED;
-        LocalDateTime now = LocalDateTime.now(clock);
 
         FeedbackIssue issue = FeedbackIssue.builder()
                 .userId(userId)
@@ -124,8 +122,8 @@ public class FeedbackIssueServiceImpl implements FeedbackIssueService {
                 .category(category)
                 .content(content)
                 .priority(priority)
-                .status(status)
-                .resolvedAt(STATUS_RESOLVED.equals(status) ? now : null)
+                .status(STATUS_OPEN)
+                .resolvedAt(null)
                 .build();
 
         if (feedbackIssueMapper.insert(issue) <= 0) {

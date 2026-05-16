@@ -1,10 +1,10 @@
 import { request } from '@/utils/request'
 
-export function register(username, password) {
+export function register(username, password, email, customerType = 'REGULAR') {
   return request({
     url: '/user/register',
     method: 'POST',
-    data: { username, password },
+    data: { username, password, email, customerType },
     contentType: 'form'
   })
 }

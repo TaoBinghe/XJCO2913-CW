@@ -1,10 +1,9 @@
 import { request } from '@/utils/request'
 
-export function pay(bookingId) {
+export function payBooking(data) {
   return request({
     url: '/payment',
     method: 'POST',
-    data: { bookingId },
-    contentType: 'query'
+    data
   })
 }

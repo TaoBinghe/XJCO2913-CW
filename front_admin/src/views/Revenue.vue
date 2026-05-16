@@ -2,133 +2,130 @@
   <div class="revenue-page">
     <div class="page-header">
       <div>
-        <h2 class="page-heading">Weekly Revenue</h2>
-        <p class="page-copy">Weekly Sprint 3 revenue summary grouped by the current hire periods, including minute-based scan rides.</p>
+        <h2 class="page-heading">Revenue</h2>
+        <p class="page-copy">Sprint 4 revenue summary with weekly hire-period buckets and the latest 7-day daily view.</p>
       </div>
-      <el-button :loading="loading" @click="loadSummary">
+      <el-button :loading="loading" @click="loadSummaries">
         <el-icon><Refresh /></el-icon>
         Refresh
       </el-button>
     </div>
 
-    <el-row :gutter="20" class="stats-row">
-      <el-col :xs="24" :sm="12" :xl="6">
-        <el-card shadow="hover" class="stat-card">
-          <div class="stat-label">Window Start</div>
-          <div class="stat-value stat-value-small">{{ formatDateTime(summary?.windowStart) }}</div>
-        </el-card>
-      </el-col>
+    <el-tabs v-model="activeTab" class="revenue-tabs">
+      <el-tab-pane label="Weekly by Hire Period" name="weekly">
+        <el-row :gutter="20" class="stats-row">
+          <el-col :xs="24" :sm="12" :xl="6">
+            <el-card shadow="hover" class="stat-card">
+              <div class="stat-label">Window Start</div>
+              <div class="stat-value stat-value-small">{{ formatDateTime(weeklySummary?.windowStart) }}</div>
+            </el-card>
+          </el-col>
+          <el-col :xs="24" :sm="12" :xl="6">
+            <el-card shadow="hover" class="stat-card">
+              <div class="stat-label">Window End</div>
+              <div class="stat-value stat-value-small">{{ formatDateTime(weeklySummary?.windowEnd) }}</div>
+            </el-card>
+          </el-col>
+          <el-col :xs="24" :sm="12" :xl="6">
+            <el-card shadow="hover" class="stat-card">
+              <div class="stat-label">Weekly Orders</div>
+              <div class="stat-value">{{ weeklyOrders }}</div>
+            </el-card>
+          </el-col>
+          <el-col :xs="24" :sm="12" :xl="6">
+            <el-card shadow="hover" class="stat-card">
+              <div class="stat-label">Weekly Revenue</div>
+              <div class="stat-value">{{ formatCurrency(weeklyRevenue) }}</div>
+            </el-card>
+          </el-col>
+        </el-row>
 
-      <el-col :xs="24" :sm="12" :xl="6">
-        <el-card shadow="hover" class="stat-card">
-          <div class="stat-label">Window End</div>
-          <div class="stat-value stat-value-small">{{ formatDateTime(summary?.windowEnd) }}</div>
-        </el-card>
-      </el-col>
-
-      <el-col :xs="24" :sm="12" :xl="6">
-        <el-card shadow="hover" class="stat-card">
-          <div class="stat-label">Weekly Orders</div>
-          <div class="stat-value">{{ totalOrders }}</div>
-        </el-card>
-      </el-col>
-
-      <el-col :xs="24" :sm="12" :xl="6">
-        <el-card shadow="hover" class="stat-card">
-          <div class="stat-label">Weekly Revenue</div>
-          <div class="stat-value">{{ formatCurrency(totalRevenue) }}</div>
-        </el-card>
-      </el-col>
-    </el-row>
-
-    <el-row :gutter="20">
-      <el-col :xs="24" :xl="8">
-        <el-card class="summary-card" v-loading="loading">
-          <template #header>
-            <div class="card-header">
-              <span class="card-title">Summary</span>
-              <span class="card-note">Most popular period plus current weekly totals.</span>
-            </div>
-          </template>
-
-          <div class="summary-row">
-            <span class="summary-label">Most Popular Period</span>
-            <span class="summary-value">{{ mostPopularLabel }}</span>
-          </div>
-          <div class="summary-row">
-            <span class="summary-label">Tracked Hire Periods</span>
-            <span class="summary-value">{{ revenueBuckets.length }}</span>
-          </div>
-          <div class="summary-row">
-            <span class="summary-label">Average Revenue / Order</span>
-            <span class="summary-value">{{ averageRevenueLabel }}</span>
-          </div>
-        </el-card>
-      </el-col>
-
-      <el-col :xs="24" :xl="16">
-        <el-card class="visual-card" v-loading="loading">
-          <template #header>
-            <div class="card-header">
-              <span class="card-title">Revenue Visualization</span>
-              <span class="card-note">A quick visual comparison of weekly revenue and booking volume by hire period.</span>
-            </div>
-          </template>
-
-          <div class="chart-shell">
-            <div class="revenue-chart">
-              <div
-                v-for="item in visualizationItems"
-                :key="item.hirePeriod"
-                class="chart-column"
-              >
-                <div class="chart-value">{{ formatCurrency(item.totalRevenue) }}</div>
-                <div class="chart-track">
-                  <div
-                    class="chart-bar"
-                    :style="{ height: `${Math.max(item.revenuePercent, item.totalRevenue > 0 ? 8 : 0)}%` }"
-                  ></div>
+        <el-row :gutter="20">
+          <el-col :xs="24" :xl="8">
+            <el-card class="summary-card" v-loading="loading">
+              <template #header>
+                <div class="card-header">
+                  <span class="card-title">Summary</span>
+                  <span class="card-note">Most popular period plus current weekly totals.</span>
                 </div>
-                <div class="chart-period">{{ formatPeriod(item.hirePeriod) }}</div>
-                <div class="chart-code">{{ item.hirePeriod }}</div>
+              </template>
+
+              <div class="summary-row">
+                <span class="summary-label">Most Popular Period</span>
+                <span class="summary-value">{{ weeklyPopularLabel }}</span>
               </div>
-            </div>
+              <div class="summary-row">
+                <span class="summary-label">Tracked Hire Periods</span>
+                <span class="summary-value">{{ weeklyBuckets.length }}</span>
+              </div>
+              <div class="summary-row">
+                <span class="summary-label">Average Revenue / Order</span>
+                <span class="summary-value">{{ weeklyAverageLabel }}</span>
+              </div>
+            </el-card>
+          </el-col>
 
-            <div class="orders-breakdown">
-              <div
-                v-for="item in visualizationItems"
-                :key="`${item.hirePeriod}-orders`"
-                class="breakdown-row"
-              >
-                <div class="breakdown-copy">
-                  <span class="breakdown-label">{{ formatPeriod(item.hirePeriod) }}</span>
-                  <span class="breakdown-meta">{{ item.orderCount }} orders</span>
+          <el-col :xs="24" :xl="16">
+            <el-card class="visual-card" v-loading="loading">
+              <template #header>
+                <div class="card-header">
+                  <span class="card-title">Weekly Visualization</span>
+                  <span class="card-note">Revenue and booking volume grouped by hire period.</span>
                 </div>
-                <div class="breakdown-track">
+              </template>
+
+              <div class="chart-shell">
+                <div class="revenue-chart">
                   <div
-                    class="breakdown-fill"
-                    :style="{ width: `${Math.max(item.orderPercent, item.orderCount > 0 ? 10 : 0)}%` }"
-                  ></div>
+                    v-for="item in weeklyVisualizationItems"
+                    :key="item.hirePeriod"
+                    class="chart-column"
+                  >
+                    <div class="chart-value">{{ formatCurrency(item.totalRevenue) }}</div>
+                    <div class="chart-track">
+                      <div
+                        class="chart-bar"
+                        :style="{ height: `${Math.max(item.revenuePercent, item.totalRevenue > 0 ? 8 : 0)}%` }"
+                      ></div>
+                    </div>
+                    <div class="chart-period">{{ formatPeriod(item.hirePeriod) }}</div>
+                    <div class="chart-code">{{ item.hirePeriod }}</div>
+                  </div>
+                </div>
+
+                <div class="orders-breakdown">
+                  <div
+                    v-for="item in weeklyVisualizationItems"
+                    :key="`${item.hirePeriod}-orders`"
+                    class="breakdown-row"
+                  >
+                    <div class="breakdown-copy">
+                      <span class="breakdown-label">{{ formatPeriod(item.hirePeriod) }}</span>
+                      <span class="breakdown-meta">{{ item.orderCount }} orders</span>
+                    </div>
+                    <div class="breakdown-track">
+                      <div
+                        class="breakdown-fill"
+                        :style="{ width: `${Math.max(item.orderPercent, item.orderCount > 0 ? 10 : 0)}%` }"
+                      ></div>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
+            </el-card>
+          </el-col>
+        </el-row>
 
-    <el-row :gutter="20" class="table-row">
-      <el-col :xs="24">
-        <el-card v-loading="loading">
+        <el-card class="table-card" v-loading="loading">
           <template #header>
             <div class="card-header">
-              <span class="card-title">Revenue Buckets</span>
+              <span class="card-title">Weekly Revenue Buckets</span>
               <span class="card-note">Every current hire period is rendered, even when no orders exist.</span>
             </div>
           </template>
 
           <div class="table-scroll">
-            <el-table :data="revenueBuckets" stripe>
+            <el-table :data="weeklyBuckets" stripe>
               <el-table-column prop="hirePeriod" label="Hire Period" min-width="180">
                 <template #default="{ row }">
                   <div class="period-cell">
@@ -146,14 +143,124 @@
             </el-table>
           </div>
         </el-card>
-      </el-col>
-    </el-row>
+      </el-tab-pane>
+
+      <el-tab-pane label="Daily Last 7 Days" name="daily">
+        <el-row :gutter="20" class="stats-row">
+          <el-col :xs="24" :sm="12" :xl="6">
+            <el-card shadow="hover" class="stat-card">
+              <div class="stat-label">Window Start</div>
+              <div class="stat-value stat-value-small">{{ formatDate(dailySummary?.windowStartDate) }}</div>
+            </el-card>
+          </el-col>
+          <el-col :xs="24" :sm="12" :xl="6">
+            <el-card shadow="hover" class="stat-card">
+              <div class="stat-label">Window End</div>
+              <div class="stat-value stat-value-small">{{ formatDate(dailySummary?.windowEndDate) }}</div>
+            </el-card>
+          </el-col>
+          <el-col :xs="24" :sm="12" :xl="6">
+            <el-card shadow="hover" class="stat-card">
+              <div class="stat-label">Daily Orders</div>
+              <div class="stat-value">{{ dailyOrders }}</div>
+            </el-card>
+          </el-col>
+          <el-col :xs="24" :sm="12" :xl="6">
+            <el-card shadow="hover" class="stat-card">
+              <div class="stat-label">7-Day Revenue</div>
+              <div class="stat-value">{{ formatCurrency(dailyRevenue) }}</div>
+            </el-card>
+          </el-col>
+        </el-row>
+
+        <el-row :gutter="20">
+          <el-col :xs="24" :xl="8">
+            <el-card class="summary-card" v-loading="loading">
+              <template #header>
+                <div class="card-header">
+                  <span class="card-title">Daily Summary</span>
+                  <span class="card-note">Revenue grouped by payment date.</span>
+                </div>
+              </template>
+
+              <div class="summary-row">
+                <span class="summary-label">Most Popular Date</span>
+                <span class="summary-value">{{ dailySummary?.mostPopularRevenueDate || 'No activity yet' }}</span>
+              </div>
+              <div class="summary-row">
+                <span class="summary-label">Tracked Days</span>
+                <span class="summary-value">{{ dailyBuckets.length }}</span>
+              </div>
+              <div class="summary-row">
+                <span class="summary-label">Average Revenue / Day</span>
+                <span class="summary-value">{{ dailyAverageLabel }}</span>
+              </div>
+            </el-card>
+          </el-col>
+
+          <el-col :xs="24" :xl="16">
+            <el-card class="visual-card" v-loading="loading">
+              <template #header>
+                <div class="card-header">
+                  <span class="card-title">Daily Visualization</span>
+                  <span class="card-note">The fixed seven daily buckets returned by the Sprint 4 API.</span>
+                </div>
+              </template>
+
+              <div class="daily-chart">
+                <div
+                  v-for="item in dailyVisualizationItems"
+                  :key="item.revenueDate"
+                  class="chart-column"
+                >
+                  <div class="chart-value">{{ formatCurrency(item.totalRevenue) }}</div>
+                  <div class="chart-track">
+                    <div
+                      class="chart-bar chart-bar-blue"
+                      :style="{ height: `${Math.max(item.revenuePercent, item.totalRevenue > 0 ? 8 : 0)}%` }"
+                    ></div>
+                  </div>
+                  <div class="chart-period">{{ shortDate(item.revenueDate) }}</div>
+                  <div class="chart-code">{{ item.orderCount }} orders</div>
+                </div>
+              </div>
+            </el-card>
+          </el-col>
+        </el-row>
+
+        <el-card class="table-card" v-loading="loading">
+          <template #header>
+            <div class="card-header">
+              <span class="card-title">Daily Revenue Buckets</span>
+              <span class="card-note">Seven calendar days, including zero-revenue dates.</span>
+            </div>
+          </template>
+
+          <div class="table-scroll">
+            <el-table :data="dailyBuckets" stripe>
+              <el-table-column prop="revenueDate" label="Date" min-width="180" />
+              <el-table-column prop="orderCount" label="Orders" width="120" />
+              <el-table-column prop="totalRevenue" label="Revenue" min-width="160">
+                <template #default="{ row }">
+                  <span class="revenue-value">{{ formatCurrency(row.totalRevenue) }}</span>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+        </el-card>
+      </el-tab-pane>
+    </el-tabs>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { getWeeklyRevenueSummary, type AdminWeeklyRevenueSummary } from '@/api/admin'
+import {
+  getDailyRevenueSummary,
+  getWeeklyRevenueSummary,
+  type AdminDailyRevenueSummary,
+  type AdminWeeklyRevenueSummary
+} from '@/api/admin'
 import {
   formatCurrency,
   formatDateTime,
@@ -163,47 +270,81 @@ import {
   sumRevenue
 } from '@/utils/admin-display'
 
+const activeTab = ref('weekly')
 const loading = ref(false)
-const summary = ref<AdminWeeklyRevenueSummary | null>(null)
+const weeklySummary = ref<AdminWeeklyRevenueSummary | null>(null)
+const dailySummary = ref<AdminDailyRevenueSummary | null>(null)
 
-const revenueBuckets = computed(() => normalizeRevenueBuckets(summary.value?.buckets))
-const totalOrders = computed(() => sumOrders(revenueBuckets.value))
-const totalRevenue = computed(() => sumRevenue(revenueBuckets.value))
-const maxRevenue = computed(() => Math.max(...revenueBuckets.value.map(bucket => bucket.totalRevenue), 0))
-const maxOrders = computed(() => Math.max(...revenueBuckets.value.map(bucket => bucket.orderCount), 0))
-const mostPopularLabel = computed(() => {
-  return summary.value?.mostPopularHirePeriod
-    ? formatPeriod(summary.value.mostPopularHirePeriod)
+const weeklyBuckets = computed(() => normalizeRevenueBuckets(weeklySummary.value?.buckets))
+const weeklyOrders = computed(() => sumOrders(weeklyBuckets.value))
+const weeklyRevenue = computed(() => sumRevenue(weeklyBuckets.value))
+const weeklyMaxRevenue = computed(() => Math.max(...weeklyBuckets.value.map(bucket => bucket.totalRevenue), 0))
+const weeklyMaxOrders = computed(() => Math.max(...weeklyBuckets.value.map(bucket => bucket.orderCount), 0))
+const weeklyPopularLabel = computed(() => {
+  return weeklySummary.value?.mostPopularHirePeriod
+    ? formatPeriod(weeklySummary.value.mostPopularHirePeriod)
     : 'No activity yet'
 })
-const visualizationItems = computed(() => {
-  return revenueBuckets.value.map((bucket) => ({
+const weeklyAverageLabel = computed(() => {
+  if (!weeklyOrders.value) return formatCurrency(0)
+  return formatCurrency(weeklyRevenue.value / weeklyOrders.value)
+})
+const weeklyVisualizationItems = computed(() => {
+  return weeklyBuckets.value.map((bucket) => ({
     ...bucket,
-    revenuePercent: maxRevenue.value > 0 ? (bucket.totalRevenue / maxRevenue.value) * 100 : 0,
-    orderPercent: maxOrders.value > 0 ? (bucket.orderCount / maxOrders.value) * 100 : 0
+    revenuePercent: weeklyMaxRevenue.value > 0 ? (bucket.totalRevenue / weeklyMaxRevenue.value) * 100 : 0,
+    orderPercent: weeklyMaxOrders.value > 0 ? (bucket.orderCount / weeklyMaxOrders.value) * 100 : 0
   }))
 })
-const averageRevenueLabel = computed(() => {
-  if (!totalOrders.value) {
-    return formatCurrency(0)
-  }
-  return formatCurrency(totalRevenue.value / totalOrders.value)
+
+const dailyBuckets = computed(() => {
+  return (dailySummary.value?.buckets || []).map((bucket) => ({
+    revenueDate: bucket.revenueDate,
+    orderCount: Number(bucket.orderCount || 0),
+    totalRevenue: Number(bucket.totalRevenue || 0)
+  }))
+})
+const dailyOrders = computed(() => sumOrders(dailyBuckets.value))
+const dailyRevenue = computed(() => Number(dailySummary.value?.totalRevenue ?? sumRevenue(dailyBuckets.value)))
+const dailyMaxRevenue = computed(() => Math.max(...dailyBuckets.value.map(bucket => bucket.totalRevenue), 0))
+const dailyAverageLabel = computed(() => {
+  if (!dailyBuckets.value.length) return formatCurrency(0)
+  return formatCurrency(dailyRevenue.value / dailyBuckets.value.length)
+})
+const dailyVisualizationItems = computed(() => {
+  return dailyBuckets.value.map((bucket) => ({
+    ...bucket,
+    revenuePercent: dailyMaxRevenue.value > 0 ? (bucket.totalRevenue / dailyMaxRevenue.value) * 100 : 0
+  }))
 })
 
-async function loadSummary() {
+function formatDate(value: string | null | undefined) {
+  return value || '-'
+}
+
+function shortDate(value: string) {
+  return value ? value.slice(5) : '-'
+}
+
+async function loadSummaries() {
   loading.value = true
   try {
-    const res = await getWeeklyRevenueSummary()
-    summary.value = res.data || null
+    const [weeklyRes, dailyRes] = await Promise.all([
+      getWeeklyRevenueSummary(),
+      getDailyRevenueSummary()
+    ])
+    weeklySummary.value = weeklyRes.data || null
+    dailySummary.value = dailyRes.data || null
   } catch {
-    summary.value = null
+    weeklySummary.value = null
+    dailySummary.value = null
   } finally {
     loading.value = false
   }
 }
 
 onMounted(() => {
-  loadSummary()
+  loadSummaries()
 })
 </script>
 
@@ -232,11 +373,15 @@ onMounted(() => {
   line-height: 1.6;
 }
 
+.revenue-tabs :deep(.el-tabs__content) {
+  overflow: visible;
+}
+
 .stats-row {
   margin-bottom: 20px;
 }
 
-.table-row {
+.table-card {
   margin-top: 20px;
 }
 
@@ -283,15 +428,6 @@ onMounted(() => {
   color: #6b7280;
 }
 
-.table-scroll {
-  width: 100%;
-  overflow-x: auto;
-}
-
-.table-scroll :deep(.el-table) {
-  min-width: 600px;
-}
-
 .summary-row {
   display: flex;
   justify-content: space-between;
@@ -322,7 +458,8 @@ onMounted(() => {
   align-items: stretch;
 }
 
-.revenue-chart {
+.revenue-chart,
+.daily-chart {
   min-height: 320px;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -331,11 +468,16 @@ onMounted(() => {
   padding: 12px 0 6px;
 }
 
+.daily-chart {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
 .chart-column {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 10px;
+  min-width: 0;
 }
 
 .chart-value {
@@ -362,6 +504,11 @@ onMounted(() => {
   transition: height 0.25s ease;
 }
 
+.chart-bar-blue {
+  background: #2463d6;
+  box-shadow: 0 12px 24px rgba(36, 99, 214, 0.18);
+}
+
 .chart-period {
   font-size: 13px;
   font-weight: 600;
@@ -372,6 +519,7 @@ onMounted(() => {
 .chart-code {
   font-size: 12px;
   color: #6b7280;
+  text-align: center;
 }
 
 .orders-breakdown {
@@ -419,6 +567,15 @@ onMounted(() => {
   transition: width 0.25s ease;
 }
 
+.table-scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.table-scroll :deep(.el-table) {
+  min-width: 600px;
+}
+
 .period-cell {
   display: flex;
   flex-direction: column;
@@ -461,8 +618,10 @@ onMounted(() => {
     grid-template-columns: 1fr;
   }
 
-  .revenue-chart {
+  .revenue-chart,
+  .daily-chart {
     min-height: 260px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .chart-track {

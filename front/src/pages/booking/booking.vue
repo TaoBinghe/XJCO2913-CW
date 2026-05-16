@@ -1,6 +1,7 @@
 <template>
   <view class="booking-screen">
     <map
+      id="scanRideMap"
       class="booking-fullscreen-map"
       :latitude="mapCenter.latitude"
       :longitude="mapCenter.longitude"
@@ -42,7 +43,7 @@
             <cover-view v-if="routeInfo" class="sheet-info-row">
               <cover-view class="sheet-info-label">Walk</cover-view>
               <cover-view class="sheet-info-value">
-                {{ formatDistance(routeInfo.distanceMeters) }} · {{ formatDuration(routeInfo.durationSeconds) }}
+                {{ formatDistance(routeInfo.distanceMeters) }} / {{ formatDuration(routeInfo.durationSeconds) }}
               </cover-view>
             </cover-view>
           </cover-view>
@@ -79,7 +80,7 @@
 
     <view class="booking-topbar" :style="bookingTopbarStyle">
       <view class="booking-back-button" @click="handlePageBack">
-        <text class="booking-back-icon">‹</text>
+        <view class="booking-back-icon"></view>
       </view>
       <view class="booking-search-shell" :style="bookingSearchStyle">
         <input
@@ -113,6 +114,7 @@ const DEFAULT_CENTER = {
   latitude: 30.76732,
   longitude: 103.98212
 }
+const MAP_ID = 'scanRideMap'
 const USER_MARKER_ID = 900000001
 
 function parseScooterCode(rawValue) {
@@ -175,7 +177,7 @@ export default {
             color: scooter.status === 'AVAILABLE' ? '#111111' : '#6f776a',
             fontSize: 11,
             borderRadius: 12,
-            bgColor: this.selectedScooterId === scooter.id ? '#efff84' : '#ffffff',
+            bgColor: this.selectedScooterId === scooter.id ? '#e7f0e9' : '#ffffff',
             padding: 6,
             display: this.selectedScooterId === scooter.id ? 'ALWAYS' : 'BYCLICK'
           }
@@ -200,7 +202,7 @@ export default {
             color: '#111111',
             fontSize: 11,
             borderRadius: 12,
-            bgColor: '#efff84',
+            bgColor: '#e7f0e9',
             padding: 6,
             display: 'ALWAYS'
           }
@@ -219,8 +221,8 @@ export default {
           longitude: Number(this.selectedScooter.longitude),
           radius: 38,
           strokeWidth: 2,
-          color: '#94c83d66',
-          fillColor: '#efff8440'
+          color: '#4a7c5266',
+          fillColor: '#4a7c5240'
         }
       ]
     },
@@ -357,14 +359,38 @@ export default {
       this.userLocation = userLocation
 
       if (shouldCenter) {
-        this.mapCenter = { ...userLocation }
-        this.mapScale = 17
+        this.centerMapOnLocation(userLocation, 17)
       }
+    },
+    centerMapOnLocation(location, scale = 17) {
+      if (!this.hasCoordinates(location)) {
+        return
+      }
+
+      const center = {
+        latitude: Number(location.latitude),
+        longitude: Number(location.longitude)
+      }
+      this.mapCenter = { ...center }
+      this.mapScale = scale
+
+      this.$nextTick(() => {
+        if (typeof uni.createMapContext !== 'function') {
+          return
+        }
+
+        const mapContext = uni.createMapContext(MAP_ID, this)
+        if (mapContext && typeof mapContext.moveToLocation === 'function') {
+          mapContext.moveToLocation({
+            latitude: center.latitude,
+            longitude: center.longitude
+          })
+        }
+      })
     },
     recenterToUser() {
       if (this.userLocation) {
-        this.mapCenter = { ...this.userLocation }
-        this.mapScale = 17
+        this.centerMapOnLocation(this.userLocation, 17)
         return
       }
 
@@ -401,8 +427,7 @@ export default {
     handleMarkerTap(event) {
       if (Number(event.detail.markerId) === USER_MARKER_ID) {
         if (this.userLocation) {
-          this.mapCenter = { ...this.userLocation }
-          this.mapScale = 17
+          this.centerMapOnLocation(this.userLocation, 17)
         }
         return
       }
@@ -471,7 +496,7 @@ export default {
             latitude: Number(point.latitude),
             longitude: Number(point.longitude)
           })),
-          color: '#5d8c22',
+          color: '#4a7c52',
           width: 6,
           arrowLine: true
         }]
@@ -596,10 +621,12 @@ export default {
 }
 
 .booking-back-icon {
-  color: #111111;
-  font-size: 48rpx;
-  font-weight: 700;
-  line-height: 1;
+  width: 22rpx;
+  height: 22rpx;
+  margin-left: 8rpx;
+  border-left: 5rpx solid #111111;
+  border-bottom: 5rpx solid #111111;
+  transform: rotate(45deg);
 }
 
 .booking-search-shell {
@@ -628,8 +655,8 @@ export default {
   height: 58rpx;
   padding: 0 18rpx;
   border-radius: 18rpx;
-  background: #efff84;
-  color: #111111;
+  background: #4a7c52;
+  color: #ffffff;
   font-size: 24rpx;
   font-weight: 700;
   line-height: 58rpx;
@@ -647,7 +674,7 @@ export default {
 }
 
 .sheet-kicker {
-  color: #89a54c;
+  color: #4a7c52;
   font-size: 22rpx;
   line-height: 1.2;
   letter-spacing: 2rpx;
@@ -731,8 +758,8 @@ export default {
 }
 
 .sheet-button-primary {
-  background: #efff84;
-  color: #111111;
+  background: #4a7c52;
+  color: #ffffff;
 }
 
 .sheet-button-disabled {

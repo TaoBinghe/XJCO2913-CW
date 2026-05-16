@@ -30,6 +30,7 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -418,18 +419,20 @@ public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> impl
                 ? PricingPlanPeriodUtil.addPeriod(currentEnd, pricingPlan.getHirePeriod())
                 : PricingPlanPeriodUtil.addPeriod(requireBookingStartTime(booking), pricingPlan.getHirePeriod());
 
-        if (!newEnd.isAfter(currentEnd)) {
+        if (additiveExtension && !newEnd.isAfter(currentEnd)) {
             throw new IllegalArgumentException("New hire period must extend the booking");
         }
         if (!newEnd.isAfter(LocalDateTime.now(clock))) {
-            throw new IllegalArgumentException("Extended booking end time must be in the future");
+            throw new IllegalArgumentException("Booking end time must be in the future");
         }
 
         ensureStoreCanCoverExtendedBooking(booking, newEnd);
 
         BigDecimal currentBaseCost = resolveBaseCost(booking);
         BigDecimal extensionPrice = requirePrice(pricingPlan);
-        booking.setPricingPlanId(pricingPlan.getId());
+        if (!additiveExtension) {
+            booking.setPricingPlanId(pricingPlan.getId());
+        }
         booking.setEndTime(newEnd);
         booking.setOverdueCost(BigDecimal.ZERO);
         booking.setTotalCost(additiveExtension ? currentBaseCost.add(extensionPrice) : extensionPrice);
@@ -804,9 +807,9 @@ public class BookingServiceImpl extends ServiceImpl<BookingMapper, Booking> impl
         if (appointmentStart == null) {
             throw new IllegalArgumentException("Appointment start is required");
         }
-        LocalDateTime now = LocalDateTime.now(clock);
+        LocalDateTime now = LocalDateTime.now(clock).truncatedTo(ChronoUnit.MINUTES);
         if (appointmentStart.isBefore(now)) {
-            throw new IllegalArgumentException("Appointment start must be in the future");
+            throw new IllegalArgumentException("Appointment start must be current time or later");
         }
         if (appointmentStart.isAfter(now.plusDays(30))) {
             throw new IllegalArgumentException("Appointment start cannot be more than 30 days ahead");
