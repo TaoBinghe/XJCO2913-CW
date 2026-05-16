@@ -1,5 +1,6 @@
 package com.greengo.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.greengo.domain.AdminFeedbackIssueUpdateRequest;
 import com.greengo.domain.Booking;
@@ -128,6 +129,59 @@ public class FeedbackIssueServiceImpl implements FeedbackIssueService {
 
         if (feedbackIssueMapper.insert(issue) <= 0) {
             throw new IllegalArgumentException("Failed to submit feedback");
+        }
+        return getIssueDetail(issue.getId());
+    }
+
+    @Override
+    @Transactional
+    public FeedbackIssue createIssueFromAgent(String scooterCode, Long bookingId, String faultDescription) {
+        Long userId = currentUserId();
+
+        if (bookingId == null) {
+            throw new IllegalArgumentException("订单ID不能为空，请提供订单编号");
+        }
+        Booking booking = bookingMapper.selectById(bookingId);
+        if (booking == null) {
+            throw new IllegalArgumentException("未找到该订单，请检查订单编号是否正确");
+        }
+        if (!Objects.equals(booking.getUserId(), userId)) {
+            throw new IllegalArgumentException("该订单不属于您，请检查订单编号是否正确");
+        }
+
+        if (scooterCode == null || scooterCode.trim().isBlank()) {
+            throw new IllegalArgumentException("车辆编码不能为空，请提供车辆编码");
+        }
+        Scooter scooter = scooterMapper.selectOne(
+                new LambdaQueryWrapper<Scooter>().eq(Scooter::getScooterCode, scooterCode.trim())
+        );
+        if (scooter == null) {
+            throw new IllegalArgumentException("未找到车辆编码为 " + scooterCode.trim() + " 的车辆，请检查后重新输入");
+        }
+
+        if (faultDescription == null || faultDescription.trim().length() < 5) {
+            throw new IllegalArgumentException("故障描述不能少于5个字符，请详细描述您遇到的问题");
+        }
+        String content = faultDescription.trim();
+        if (content.length() > 500) {
+            content = content.substring(0, 500);
+        }
+
+        String priority = resolvePriority(content);
+
+        FeedbackIssue issue = FeedbackIssue.builder()
+                .userId(userId)
+                .bookingId(booking.getId())
+                .scooterId(scooter.getId())
+                .category(CATEGORY_SCOOTER_FAULT)
+                .content(content)
+                .priority(priority)
+                .status(STATUS_OPEN)
+                .resolvedAt(null)
+                .build();
+
+        if (feedbackIssueMapper.insert(issue) <= 0) {
+            throw new IllegalArgumentException("故障报告提交失败，请重试");
         }
         return getIssueDetail(issue.getId());
     }

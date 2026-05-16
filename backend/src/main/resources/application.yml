@@ -31,3 +31,8 @@ server:
 
 amap:
   web-service-key: ${AMAP_WEB_SERVICE_KEY:}
+
+dashscope:
+  api-key: ${DASHSCOPE_API_KEY:sk-80b55f68eb834643900a311ea1545da9}
+  base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+  model: qwen-plus

@@ -17,4 +17,6 @@ public interface FeedbackIssueService {
     List<FeedbackIssue> listHighPriorityIssues();
 
     FeedbackIssue updateAdminIssue(Long issueId, AdminFeedbackIssueUpdateRequest request);
+
+    FeedbackIssue createIssueFromAgent(String scooterCode, Long bookingId, String faultDescription);
 }
