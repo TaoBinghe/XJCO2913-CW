@@ -32,6 +32,9 @@ DB_URL=jdbc:mysql://<cloud-mysql-host>:<cloud-mysql-port>/xjco2913?useSSL=false&
 DB_USERNAME=<db-username>
 DB_PASSWORD=<db-password>
 AMAP_WEB_SERVICE_KEY=<amap-web-service-key>
+DASHSCOPE_API_KEY=<dashscope-api-key>
+DASHSCOPE_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+DASHSCOPE_MODEL=qwen-plus
 MAIL_HOST=<smtp-host>
 MAIL_PORT=587
 MAIL_USERNAME=<smtp-username>
@@ -42,6 +45,8 @@ MAIL_SMTP_STARTTLS_ENABLE=true
 ```
 
 Use the values in [cloud-hosting.env.example](cloud-hosting.env.example:1) as the template. Do not leave `DB_URL` on the default `localhost:3306` value when the service runs in cloud hosting.
+
+`DASHSCOPE_API_KEY` is required for the AI fault assistant at `POST /fault-report/chat`. The backend intentionally has no default API key; if this value is missing, the mini program still works and the AI chat shows a friendly unavailable message. If an API key was ever committed or shared in a config file, rotate it in DashScope before deployment.
 
 The JDBC URL must include the database name. This is valid:
 

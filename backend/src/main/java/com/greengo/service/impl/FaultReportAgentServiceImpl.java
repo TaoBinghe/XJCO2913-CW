@@ -21,7 +21,9 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -34,6 +36,12 @@ public class FaultReportAgentServiceImpl implements FaultReportAgentService {
     private static final Pattern JSON_BLOCK_PATTERN = Pattern.compile(
             "---故障提交---\\s*\\n?\\s*(\\{[\\s\\S]*?\\})\\s*$"
     );
+    private static final int MAX_USER_MESSAGE_LENGTH = 1000;
+    private static final int MAX_HISTORY_MESSAGES = 10;
+    private static final int MAX_HISTORY_CONTENT_LENGTH = 1000;
+    private static final Set<String> VALID_HISTORY_ROLES = Set.of("user", "assistant");
+    private static final String AI_UNAVAILABLE_REPLY =
+            "AI客服暂时不可用，请稍后重试，或使用下方表单提交反馈。";
 
     private static final String SYSTEM_PROMPT = """
             你是一名Green Go电动滑板车故障上报助手。你的工作是通过对话收集用户的故障信息，并最终提交故障报告。
@@ -63,13 +71,13 @@ public class FaultReportAgentServiceImpl implements FaultReportAgentService {
             .build();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    @Value("${dashscope.api-key}")
+    @Value("${dashscope.api-key:}")
     private String apiKey;
 
-    @Value("${dashscope.base-url}")
+    @Value("${dashscope.base-url:https://dashscope.aliyuncs.com/compatible-mode/v1}")
     private String baseUrl;
 
-    @Value("${dashscope.model}")
+    @Value("${dashscope.model:qwen-plus}")
     private String model;
 
     @Autowired
@@ -77,13 +85,21 @@ public class FaultReportAgentServiceImpl implements FaultReportAgentService {
 
     @Override
     public FaultReportChatResponse processMessage(String userMessage, List<FaultReportMessage> history) {
+        String normalizedUserMessage = normalizeUserMessage(userMessage);
+        List<FaultReportMessage> normalizedHistory = normalizeHistory(history);
+
+        if (!hasAiConfig()) {
+            log.warn("Skip fault report AI call because DashScope configuration is incomplete");
+            return new FaultReportChatResponse(AI_UNAVAILABLE_REPLY);
+        }
+
         try {
-            List<Map<String, String>> messages = buildMessages(userMessage, history);
+            List<Map<String, String>> messages = buildMessages(normalizedUserMessage, normalizedHistory);
             String llmResponse = callDashScope(messages);
             return parseResponse(llmResponse);
         } catch (Exception e) {
             log.error("Fault report agent error", e);
-            return new FaultReportChatResponse("系统处理故障报告时遇到问题，请稍后重试。");
+            return new FaultReportChatResponse(AI_UNAVAILABLE_REPLY);
         }
     }
 
@@ -106,17 +122,15 @@ public class FaultReportAgentServiceImpl implements FaultReportAgentService {
             }
         }
 
-        if (userMessage != null && !userMessage.isBlank()) {
-            Map<String, String> userMsg = new LinkedHashMap<>();
-            userMsg.put("role", "user");
-            userMsg.put("content", userMessage.trim());
-            messages.add(userMsg);
-        }
+        Map<String, String> userMsg = new LinkedHashMap<>();
+        userMsg.put("role", "user");
+        userMsg.put("content", userMessage);
+        messages.add(userMsg);
 
         return messages;
     }
 
-    private String callDashScope(List<Map<String, String>> messages) throws Exception {
+    protected String callDashScope(List<Map<String, String>> messages) throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("model", model);
         body.put("messages", messages);
@@ -125,7 +139,7 @@ public class FaultReportAgentServiceImpl implements FaultReportAgentService {
 
         String jsonBody = objectMapper.writeValueAsString(body);
 
-        URI uri = URI.create(baseUrl + "/chat/completions");
+        URI uri = URI.create(normalizeBaseUrl(baseUrl) + "/chat/completions");
         HttpRequest request = HttpRequest.newBuilder(uri)
                 .timeout(Duration.ofSeconds(30))
                 .header("Content-Type", "application/json")
@@ -153,6 +167,65 @@ public class FaultReportAgentServiceImpl implements FaultReportAgentService {
         }
 
         return content.trim();
+    }
+
+    private String normalizeUserMessage(String userMessage) {
+        if (userMessage == null || userMessage.trim().isBlank()) {
+            throw new IllegalArgumentException("Message is required");
+        }
+        String normalized = userMessage.trim();
+        if (normalized.length() > MAX_USER_MESSAGE_LENGTH) {
+            throw new IllegalArgumentException("Message must be 1000 characters or fewer");
+        }
+        return normalized;
+    }
+
+    private List<FaultReportMessage> normalizeHistory(List<FaultReportMessage> history) {
+        if (history == null || history.isEmpty()) {
+            return List.of();
+        }
+
+        int startIndex = Math.max(0, history.size() - MAX_HISTORY_MESSAGES);
+        List<FaultReportMessage> normalizedHistory = new ArrayList<>();
+        for (int i = startIndex; i < history.size(); i++) {
+            FaultReportMessage msg = history.get(i);
+            if (msg == null) {
+                continue;
+            }
+
+            if (msg.getRole() == null || msg.getRole().trim().isBlank()) {
+                throw new IllegalArgumentException("History role must be user or assistant");
+            }
+            String role = msg.getRole().trim().toLowerCase(Locale.ROOT);
+            if (!VALID_HISTORY_ROLES.contains(role)) {
+                throw new IllegalArgumentException("History role must be user or assistant");
+            }
+
+            if (msg.getContent() == null || msg.getContent().trim().isBlank()) {
+                continue;
+            }
+            String content = msg.getContent().trim();
+            if (content.length() > MAX_HISTORY_CONTENT_LENGTH) {
+                content = content.substring(0, MAX_HISTORY_CONTENT_LENGTH);
+            }
+            normalizedHistory.add(new FaultReportMessage(role, content));
+        }
+
+        return normalizedHistory;
+    }
+
+    private boolean hasAiConfig() {
+        return apiKey != null && !apiKey.isBlank()
+                && baseUrl != null && !baseUrl.isBlank()
+                && model != null && !model.isBlank();
+    }
+
+    private String normalizeBaseUrl(String value) {
+        String normalized = value.trim();
+        while (normalized.endsWith("/")) {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+        return normalized;
     }
 
     private FaultReportChatResponse parseResponse(String llmResponse) {

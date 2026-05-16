@@ -22,6 +22,9 @@ public class FaultReportController {
     @PostMapping("/chat")
     public Result<?> chat(@RequestBody FaultReportChatRequest request) {
         try {
+            if (request == null) {
+                return Result.error("Message is required");
+            }
             FaultReportChatResponse response = faultReportAgentService.processMessage(
                     request.getMessage(),
                     request.getHistory() != null ? request.getHistory() : List.of()

@@ -16,3 +16,11 @@ export function getMyFeedbackIssues(bookingId) {
     contentType: 'query'
   })
 }
+
+export function chatFaultReport(data) {
+  return request({
+    url: '/fault-report/chat',
+    method: 'POST',
+    data
+  })
+}
