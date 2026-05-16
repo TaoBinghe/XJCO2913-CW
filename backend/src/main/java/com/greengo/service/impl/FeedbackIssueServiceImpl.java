@@ -139,28 +139,28 @@ public class FeedbackIssueServiceImpl implements FeedbackIssueService {
         Long userId = currentUserId();
 
         if (bookingId == null) {
-            throw new IllegalArgumentException("订单ID不能为空，请提供订单编号");
+            throw new IllegalArgumentException("Booking ID is required. Please provide your booking number.");
         }
         Booking booking = bookingMapper.selectById(bookingId);
         if (booking == null) {
-            throw new IllegalArgumentException("未找到该订单，请检查订单编号是否正确");
+            throw new IllegalArgumentException("Booking not found. Please check and re-enter the booking ID.");
         }
         if (!Objects.equals(booking.getUserId(), userId)) {
-            throw new IllegalArgumentException("该订单不属于您，请检查订单编号是否正确");
+            throw new IllegalArgumentException("This booking does not belong to you. Please check and re-enter.");
         }
 
         if (scooterCode == null || scooterCode.trim().isBlank()) {
-            throw new IllegalArgumentException("车辆编码不能为空，请提供车辆编码");
+            throw new IllegalArgumentException("Scooter code is required. Please provide the scooter code.");
         }
         Scooter scooter = scooterMapper.selectOne(
                 new LambdaQueryWrapper<Scooter>().eq(Scooter::getScooterCode, scooterCode.trim())
         );
         if (scooter == null) {
-            throw new IllegalArgumentException("未找到车辆编码为 " + scooterCode.trim() + " 的车辆，请检查后重新输入");
+            throw new IllegalArgumentException("Scooter code " + scooterCode.trim() + " not found. Please check and re-enter.");
         }
 
         if (faultDescription == null || faultDescription.trim().length() < 5) {
-            throw new IllegalArgumentException("故障描述不能少于5个字符，请详细描述您遇到的问题");
+            throw new IllegalArgumentException("Fault description must be at least 5 characters. Please describe the issue in more detail.");
         }
         String content = faultDescription.trim();
         if (content.length() > 500) {
@@ -181,7 +181,7 @@ public class FeedbackIssueServiceImpl implements FeedbackIssueService {
                 .build();
 
         if (feedbackIssueMapper.insert(issue) <= 0) {
-            throw new IllegalArgumentException("故障报告提交失败，请重试");
+            throw new IllegalArgumentException("Failed to submit fault report. Please try again.");
         }
         return getIssueDetail(issue.getId());
     }

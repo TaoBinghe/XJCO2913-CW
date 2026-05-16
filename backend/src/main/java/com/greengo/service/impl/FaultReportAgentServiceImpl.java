@@ -1,12 +1,18 @@
 package com.greengo.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.greengo.domain.Booking;
 import com.greengo.domain.FaultReportChatResponse;
 import com.greengo.domain.FaultReportMessage;
 import com.greengo.domain.FeedbackIssue;
+import com.greengo.domain.Scooter;
+import com.greengo.mapper.BookingMapper;
+import com.greengo.mapper.ScooterMapper;
 import com.greengo.service.FaultReportAgentService;
 import com.greengo.service.FeedbackIssueService;
+import com.greengo.utils.ThreadLocalUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +28,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -30,32 +37,48 @@ public class FaultReportAgentServiceImpl implements FaultReportAgentService {
 
     private static final Logger log = LoggerFactory.getLogger(FaultReportAgentServiceImpl.class);
 
-    private static final String SUBMIT_MARKER = "---故障提交---";
+    private static final String SUBMIT_MARKER = "---FAULT SUBMIT---";
     private static final Pattern JSON_BLOCK_PATTERN = Pattern.compile(
-            "---故障提交---\\s*\\n?\\s*(\\{[\\s\\S]*?\\})\\s*$"
+            "---FAULT SUBMIT---\\s*\\n?\\s*(\\{[\\s\\S]*?\\})\\s*$"
+    );
+    private static final Pattern SCOOTER_CODE_PATTERN = Pattern.compile(
+            "SC\\d+", Pattern.CASE_INSENSITIVE
+    );
+    private static final Pattern BOOKING_ID_PATTERN = Pattern.compile(
+            "\\b\\d{1,10}\\b"
     );
 
     private static final String SYSTEM_PROMPT = """
-            你是一名Green Go电动滑板车故障上报助手。你的工作是通过对话收集用户的故障信息，并最终提交故障报告。
+            You are a helpful customer service assistant for Green Go, an e-scooter rental service. Your primary role is to help users with general inquiries. Respond to their questions in a helpful, professional manner. Do NOT start with a greeting — the user will send the first message.
 
-            你需要收集以下三项信息：
-            1. scooterCode——车辆编码（例如SC001），必须由用户明确提供，不要猜测
-            2. bookingId——订单ID，必须由用户明确提供，不要猜测
-            3. faultDescription——故障描述，必须由用户明确提供，不要猜测
+            Reply in the SAME LANGUAGE the user is using. If they speak English, reply in English. If they speak Chinese, reply in Chinese. Be friendly and professional.
 
-            对话规则：
-            - 每次只询问一项缺失的信息，一次只问一个问题
-            - 如果用户提供的信息不完整或不清楚，主动追问
-            - 绝对不要猜测任何信息。如果用户说的内容你不理解，请用户进一步说明
-            - 语气友好、专业，使用中文与用户交流
-            - 如果用户一开始就提供了全部信息，直接确认后提交
+            --- FAULT REPORTING MODE ---
+            ONLY when the user explicitly mentions a vehicle problem (e.g., "broken", "fault", "not working", "damaged", "issue with scooter", "坏了", "故障", "有问题", "报修") should you initiate the fault reporting process.
 
-            当且仅当全部三项信息都已收集并确认无误后，你必须在回复的末尾单独一段输出以下JSON标记：
+            When fault reporting is triggered, you need to collect THREE pieces of information:
+            1. scooterCode — the scooter's code (e.g. SC001). Must be explicitly provided by the user. Do NOT guess.
+            2. bookingId — the booking/order ID related to this fault. Must be explicitly provided by the user. Do NOT guess.
+            3. faultDescription — a clear description of what is wrong with the scooter. Must be explicitly provided by the user. Do NOT guess.
 
-            ---故障提交---
-            {"scooterCode": "SC001", "bookingId": 123, "faultDescription": "车辆故障描述"}
+            Backend Validation (during fault reporting):
+            - After the user provides a scooter code or booking ID, the backend system will automatically validate it against the database.
+            - You will see a system message with validation results like: "[SYSTEM VALIDATION: scooterCode SC001 — FOUND / NOT FOUND; bookingId 123 — FOUND (your booking) / NOT FOUND / NOT YOURS]"
+            - If validation says NOT FOUND, the scooter code or booking ID is invalid. Tell the user it was not found and ask them to double-check.
+            - If validation says NOT YOURS, the booking does not belong to the current user. Tell the user to check again.
+            - Only consider scooterCode and bookingId as confirmed when validation says FOUND.
 
-            在收集到所有信息之前，绝对不要输出上述JSON标记。bookingId必须是数字类型，不要加引号。
+            Fault reporting conversation rules:
+            - Ask only ONE question at a time, focusing on the next missing piece of information.
+            - If the user's input is unclear or incomplete, ask for clarification.
+            - NEVER guess any information. If you don't understand what the user means, ask them to explain further.
+
+            When and ONLY when ALL THREE pieces of fault information are collected AND the backend has validated scooterCode and bookingId as FOUND, you MUST output the following JSON marker at the END of your reply, on its own line:
+
+            ---FAULT SUBMIT---
+            {"scooterCode": "SC001", "bookingId": 123, "faultDescription": "description of the fault"}
+
+            Do NOT output this marker before all information is collected and validated. bookingId must be a number type without quotes in the JSON.
             """;
 
     private final HttpClient httpClient = HttpClient.newBuilder()
@@ -75,19 +98,82 @@ public class FaultReportAgentServiceImpl implements FaultReportAgentService {
     @Autowired
     private FeedbackIssueService feedbackIssueService;
 
+    @Autowired
+    private ScooterMapper scooterMapper;
+
+    @Autowired
+    private BookingMapper bookingMapper;
+
     @Override
     public FaultReportChatResponse processMessage(String userMessage, List<FaultReportMessage> history) {
         try {
-            List<Map<String, String>> messages = buildMessages(userMessage, history);
+            String validationContext = buildValidationContext(userMessage);
+            List<Map<String, String>> messages = buildMessages(userMessage, history, validationContext);
             String llmResponse = callDashScope(messages);
             return parseResponse(llmResponse);
         } catch (Exception e) {
             log.error("Fault report agent error", e);
-            return new FaultReportChatResponse("系统处理故障报告时遇到问题，请稍后重试。");
+            return new FaultReportChatResponse("The system encountered an error processing your report. Please try again later.");
         }
     }
 
-    private List<Map<String, String>> buildMessages(String userMessage, List<FaultReportMessage> history) {
+    private String buildValidationContext(String userMessage) {
+        if (userMessage == null || userMessage.isBlank()) {
+            return "";
+        }
+
+        StringBuilder ctx = new StringBuilder();
+        Long userId = getCurrentUserId();
+
+        Matcher scooterMatcher = SCOOTER_CODE_PATTERN.matcher(userMessage);
+        while (scooterMatcher.find()) {
+            String code = scooterMatcher.group().toUpperCase();
+            Scooter scooter = scooterMapper.selectOne(
+                    new LambdaQueryWrapper<Scooter>().eq(Scooter::getScooterCode, code));
+            if (scooter != null) {
+                ctx.append("scooterCode ").append(code).append(" — FOUND (status: ").append(scooter.getStatus()).append(")\n");
+            } else {
+                ctx.append("scooterCode ").append(code).append(" — NOT FOUND in database\n");
+            }
+        }
+
+        Matcher bookingMatcher = BOOKING_ID_PATTERN.matcher(userMessage);
+        while (bookingMatcher.find()) {
+            String numStr = bookingMatcher.group();
+            try {
+                long bid = Long.parseLong(numStr);
+                Booking booking = bookingMapper.selectById(bid);
+                if (booking != null) {
+                    if (userId != null && Objects.equals(booking.getUserId(), userId)) {
+                        ctx.append("bookingId ").append(bid).append(" — FOUND (your booking, status: ").append(booking.getStatus()).append(")\n");
+                    } else {
+                        ctx.append("bookingId ").append(bid).append(" — FOUND but NOT YOURS (belongs to userId=").append(booking.getUserId()).append(")\n");
+                    }
+                } else {
+                    ctx.append("bookingId ").append(bid).append(" — NOT FOUND in database\n");
+                }
+            } catch (NumberFormatException ignored) {
+            }
+        }
+
+        if (ctx.length() == 0) {
+            return "No scooter code or booking ID detected in the user's message yet.\n";
+        }
+        return "[SYSTEM VALIDATION]\n" + ctx.toString();
+    }
+
+    private Long getCurrentUserId() {
+        try {
+            Map<String, Object> claims = ThreadLocalUtil.get();
+            if (claims != null && claims.get("id") != null) {
+                return ((Number) claims.get("id")).longValue();
+            }
+        } catch (Exception ignored) {
+        }
+        return null;
+    }
+
+    private List<Map<String, String>> buildMessages(String userMessage, List<FaultReportMessage> history, String validationContext) {
         List<Map<String, String>> messages = new ArrayList<>();
 
         Map<String, String> systemMsg = new LinkedHashMap<>();
@@ -111,6 +197,13 @@ public class FaultReportAgentServiceImpl implements FaultReportAgentService {
             userMsg.put("role", "user");
             userMsg.put("content", userMessage.trim());
             messages.add(userMsg);
+        }
+
+        if (validationContext != null && !validationContext.isBlank()) {
+            Map<String, String> ctxMsg = new LinkedHashMap<>();
+            ctxMsg.put("role", "system");
+            ctxMsg.put("content", validationContext);
+            messages.add(ctxMsg);
         }
 
         return messages;
@@ -138,18 +231,18 @@ public class FaultReportAgentServiceImpl implements FaultReportAgentService {
 
         if (response.statusCode() != 200) {
             log.error("DashScope API returned status {}: {}", response.statusCode(), response.body());
-            throw new RuntimeException("AI服务返回错误状态: " + response.statusCode());
+            throw new RuntimeException("AI service returned error status: " + response.statusCode());
         }
 
         JsonNode root = objectMapper.readTree(response.body());
         JsonNode choices = root.path("choices");
         if (!choices.isArray() || choices.isEmpty()) {
-            throw new RuntimeException("AI服务返回了空的响应");
+            throw new RuntimeException("AI service returned an empty response");
         }
 
         String content = choices.get(0).path("message").path("content").asText();
         if (content == null || content.isBlank()) {
-            throw new RuntimeException("AI服务返回了空的回复内容");
+            throw new RuntimeException("AI service returned empty content");
         }
 
         return content.trim();
@@ -176,7 +269,7 @@ public class FaultReportAgentServiceImpl implements FaultReportAgentService {
 
             if (scooterCode.isBlank() || faultDescription.isBlank() || bookingId <= 0) {
                 log.warn("LLM returned incomplete JSON: {}", jsonStr);
-                return new FaultReportChatResponse(reply + "\n\n（系统未能识别完整的故障信息，请继续与我沟通。）");
+                return new FaultReportChatResponse(reply + "\n\n(The system could not process the fault information. Please continue describing the issue.)");
             }
 
             log.info("Creating fault report: scooterCode={}, bookingId={}, description={}",
@@ -194,7 +287,7 @@ public class FaultReportAgentServiceImpl implements FaultReportAgentService {
                     );
 
             return new FaultReportChatResponse(
-                    reply + "\n\n✅ 故障报告已成功提交！您的报告编号是 #" + issue.getId(),
+                    reply + "\n\nFault report submitted successfully. Your report ID is #" + issue.getId(),
                     result);
 
         } catch (IllegalArgumentException e) {
@@ -202,7 +295,7 @@ public class FaultReportAgentServiceImpl implements FaultReportAgentService {
             return new FaultReportChatResponse(reply + "\n\n" + e.getMessage());
         } catch (Exception e) {
             log.error("Failed to parse LLM JSON: {}", jsonStr, e);
-            return new FaultReportChatResponse(reply + "\n\n（系统处理故障信息时出错，请重新描述故障情况。）");
+            return new FaultReportChatResponse(reply + "\n\n(There was an error processing the fault information. Please try describing the issue again.)");
         }
     }
 }
