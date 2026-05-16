@@ -43,7 +43,7 @@
             <cover-view v-if="routeInfo" class="sheet-info-row">
               <cover-view class="sheet-info-label">Walk</cover-view>
               <cover-view class="sheet-info-value">
-                {{ formatDistance(routeInfo.distanceMeters) }} · {{ formatDuration(routeInfo.durationSeconds) }}
+                {{ formatDistance(routeInfo.distanceMeters) }} / {{ formatDuration(routeInfo.durationSeconds) }}
               </cover-view>
             </cover-view>
           </cover-view>
