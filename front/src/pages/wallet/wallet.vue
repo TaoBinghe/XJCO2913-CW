@@ -321,7 +321,7 @@ export default {
 
 .wallet-kicker {
   display: block;
-  color: #89a54c;
+  color: #4a7c52;
   font-size: 22rpx;
   font-weight: 700;
   letter-spacing: 4rpx;
@@ -364,8 +364,8 @@ export default {
 }
 
 .wallet-tab-active {
-  background: #efff84;
-  color: #111111;
+  background: #4a7c52;
+  color: #ffffff;
 }
 
 .wallet-card-list {
@@ -420,7 +420,7 @@ export default {
 .bank-card-last {
   flex-shrink: 0;
   min-width: 76rpx;
-  color: #5d8c22;
+  color: #4a7c52;
   font-size: 24rpx;
   font-weight: 700;
   text-align: right;

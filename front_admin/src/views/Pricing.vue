@@ -3,7 +3,7 @@
     <div class="page-header">
       <div>
         <h2 class="page-heading">Pricing Plan Management</h2>
-        <p class="page-copy">Create Sprint 3 reservation and scan-ride pricing plans, including minute-based periods.</p>
+        <p class="page-copy">Create reservation and scan-ride pricing plans, including minute-based periods.</p>
       </div>
       <div class="header-actions">
         <el-button :loading="loading" @click="loadPlans">

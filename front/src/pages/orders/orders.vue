@@ -310,7 +310,7 @@ export default {
 
 .order-value-strong {
   font-weight: 700;
-  color: #5d8c22;
+  color: #4a7c52;
 }
 
 .order-footer {
@@ -322,6 +322,6 @@ export default {
 .order-link {
   font-size: 24rpx;
   font-weight: 700;
-  color: #5d8c22;
+  color: #4a7c52;
 }
 </style>

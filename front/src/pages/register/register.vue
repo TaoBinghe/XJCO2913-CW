@@ -36,6 +36,25 @@
         </view>
 
         <view class="auth-field">
+          <text class="auth-label">Email</text>
+          <input
+            class="auth-input"
+            v-model="email"
+            type="text"
+            placeholder="Enter your email"
+            placeholder-style="color: #b7bdb5"
+            confirm-type="next"
+          />
+        </view>
+
+        <view class="auth-field">
+          <text class="auth-label">Customer Type</text>
+          <picker mode="selector" :range="customerTypeLabels" :value="customerTypeIndex" @change="handleCustomerTypeChange">
+            <view class="auth-picker">{{ selectedCustomerTypeLabel }}</view>
+          </picker>
+        </view>
+
+        <view class="auth-field">
           <text class="auth-label">Confirm Password</text>
           <input
             class="auth-input"
@@ -74,12 +93,33 @@ export default {
     return {
       username: '',
       password: '',
+      email: '',
       confirmPassword: '',
+      customerTypeIndex: 0,
       loading: false,
-      illustrationSrc: loginBackground
+      illustrationSrc: loginBackground,
+      customerTypes: [
+        { label: 'Regular Customer', value: 'REGULAR' },
+        { label: 'Student (10% discount)', value: 'STUDENT' },
+        { label: 'Senior (10% discount)', value: 'SENIOR' }
+      ]
+    }
+  },
+  computed: {
+    customerTypeLabels() {
+      return this.customerTypes.map(item => item.label)
+    },
+    selectedCustomerType() {
+      return this.customerTypes[this.customerTypeIndex] || this.customerTypes[0]
+    },
+    selectedCustomerTypeLabel() {
+      return this.selectedCustomerType?.label || 'Regular Customer'
     }
   },
   methods: {
+    handleCustomerTypeChange(event) {
+      this.customerTypeIndex = Number(event.detail.value || 0)
+    },
     async handleRegister() {
       if (this.username.length < 5 || this.username.length > 16) {
         uni.showToast({ title: 'Username must be 5-16 characters', icon: 'none' })
@@ -89,6 +129,10 @@ export default {
         uni.showToast({ title: 'Password must be 5-16 characters', icon: 'none' })
         return
       }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.email.trim())) {
+        uni.showToast({ title: 'Please enter a valid email', icon: 'none' })
+        return
+      }
       if (this.password !== this.confirmPassword) {
         uni.showToast({ title: 'Passwords do not match', icon: 'none' })
         return
@@ -96,7 +140,12 @@ export default {
 
       this.loading = true
       try {
-        await register(this.username, this.password)
+        await register(
+          this.username.trim(),
+          this.password,
+          this.email.trim(),
+          this.selectedCustomerType.value
+        )
         uni.showToast({ title: 'Registration successful', icon: 'success' })
         setTimeout(() => {
           uni.navigateBack()
@@ -151,7 +200,7 @@ export default {
   right: -220rpx;
   width: 560rpx;
   height: 560rpx;
-  background: radial-gradient(circle, rgba(210, 255, 38, 0.32) 0%, rgba(210, 255, 38, 0) 72%);
+  background: radial-gradient(circle, rgba(74, 124, 82, 0.22) 0%, rgba(74, 124, 82, 0) 72%);
 }
 
 .auth-glow-bottom {
@@ -159,7 +208,7 @@ export default {
   bottom: 120rpx;
   width: 420rpx;
   height: 420rpx;
-  background: radial-gradient(circle, rgba(164, 240, 103, 0.18) 0%, rgba(164, 240, 103, 0) 70%);
+  background: radial-gradient(circle, rgba(74, 124, 82, 0.14) 0%, rgba(74, 124, 82, 0) 70%);
 }
 
 .auth-copy {
@@ -170,7 +219,7 @@ export default {
   display: block;
   font-size: 24rpx;
   letter-spacing: 6rpx;
-  color: #89a54c;
+  color: #4a7c52;
 }
 
 .auth-title {
@@ -223,6 +272,20 @@ export default {
   color: #111111;
 }
 
+.auth-picker {
+  width: 100%;
+  height: 108rpx;
+  padding: 0 34rpx;
+  border: 3rpx solid #d2dacb;
+  border-radius: 54rpx;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 0 0 2rpx rgba(210, 218, 203, 0.18), 0 18rpx 40rpx rgba(17, 17, 17, 0.04);
+  box-sizing: border-box;
+  font-size: 30rpx;
+  line-height: 102rpx;
+  color: #111111;
+}
+
 .auth-submit {
   width: 100%;
   height: 108rpx;
@@ -233,16 +296,16 @@ export default {
   padding: 0;
   border: none;
   border-radius: 54rpx;
-  background: linear-gradient(135deg, #efff84 0%, #e2ff6b 100%);
-  color: #111111;
+  background: #4a7c52;
+  color: #ffffff;
   font-size: 34rpx;
   font-weight: 700;
   letter-spacing: 2rpx;
-  box-shadow: 0 20rpx 44rpx rgba(226, 255, 107, 0.24);
+  box-shadow: 0 20rpx 44rpx rgba(74, 124, 82, 0.28);
 }
 
 .auth-submit:active {
-  background: linear-gradient(135deg, #e6f973 0%, #d8f55a 100%);
+  background: #3f6946;
 }
 
 .auth-links {

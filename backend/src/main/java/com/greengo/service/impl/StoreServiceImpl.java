@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 @Service
@@ -218,9 +219,9 @@ public class StoreServiceImpl implements StoreService {
             throw new IllegalArgumentException("appointmentStart and hiredPeriod must be provided together");
         }
         if (hasStart) {
-            LocalDateTime now = LocalDateTime.now(clock);
+            LocalDateTime now = LocalDateTime.now(clock).truncatedTo(ChronoUnit.MINUTES);
             if (appointmentStart.isBefore(now)) {
-                throw new IllegalArgumentException("Appointment start must be in the future");
+                throw new IllegalArgumentException("Appointment start must be current time or later");
             }
             if (appointmentStart.isAfter(now.plusDays(30))) {
                 throw new IllegalArgumentException("Appointment start cannot be more than 30 days ahead");

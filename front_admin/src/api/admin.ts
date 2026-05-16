@@ -175,6 +175,62 @@ export interface AdminWeeklyRevenueSummary {
   buckets: AdminWeeklyRevenueBucket[]
 }
 
+export interface AdminDailyRevenueBucket {
+  revenueDate: string
+  orderCount: number
+  totalRevenue: number
+}
+
+export interface AdminDailyRevenueSummary {
+  windowStartDate: string
+  windowEndDate: string
+  buckets: AdminDailyRevenueBucket[]
+  totalRevenue: number
+  mostPopularRevenueDate: string | null
+}
+
+export interface FeedbackIssueDto {
+  id: number
+  userId: number
+  bookingId: number
+  scooterId: number | null
+  category: string
+  content: string
+  priority: string
+  status: string
+  resolutionNote: string | null
+  handledByUserId: number | null
+  resolvedAt: string | null
+  createdAt: string
+  updatedAt: string
+  username?: string | null
+  userEmail?: string | null
+  bookingStatus?: string | null
+  rentalType?: string | null
+  scooterCode?: string | null
+  handledByUsername?: string | null
+}
+
+export interface FeedbackIssueFilter {
+  priority?: string
+  status?: string
+  keyword?: string
+}
+
+export interface FeedbackIssueUpdatePayload {
+  priority?: string
+  status?: string
+  resolutionNote?: string
+}
+
+export interface UnregisteredBookingPayload {
+  customerName: string
+  customerEmail: string
+  storeId: number
+  appointmentStart: string
+  hiredPeriod: string
+}
+
 export function getPricingPlanList() {
   return request<ApiResponse<PricingPlanDto[]>>({
     url: '/admin/pricing-plans',
@@ -216,5 +272,43 @@ export function getWeeklyRevenueSummary() {
   return request<ApiResponse<AdminWeeklyRevenueSummary>>({
     url: '/admin/revenue/weekly',
     method: 'get'
+  })
+}
+
+export function getDailyRevenueSummary() {
+  return request<ApiResponse<AdminDailyRevenueSummary>>({
+    url: '/admin/revenue/daily',
+    method: 'get'
+  })
+}
+
+export function createUnregisteredBooking(body: UnregisteredBookingPayload) {
+  return request({
+    url: '/admin/bookings/unregistered',
+    method: 'post',
+    data: body
+  })
+}
+
+export function listFeedbackIssues(params: FeedbackIssueFilter = {}) {
+  return request<ApiResponse<FeedbackIssueDto[]>>({
+    url: '/admin/feedback/issues',
+    method: 'get',
+    params
+  })
+}
+
+export function listHighPriorityFeedbackIssues() {
+  return request<ApiResponse<FeedbackIssueDto[]>>({
+    url: '/admin/feedback/issues/high-priority',
+    method: 'get'
+  })
+}
+
+export function updateFeedbackIssue(id: number, body: FeedbackIssueUpdatePayload) {
+  return request<ApiResponse<FeedbackIssueDto>>({
+    url: `/admin/feedback/issues/${id}`,
+    method: 'put',
+    data: body
   })
 }

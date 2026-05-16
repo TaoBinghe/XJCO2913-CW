@@ -44,6 +44,14 @@
           <text class="menu-pill">Open</text>
         </view>
 
+        <view class="card menu-card" @click="goFeedback">
+          <view class="menu-copy">
+            <text class="menu-title">Feedback</text>
+            <text class="menu-desc">Report scooter faults, payment issues, or booking problems and track staff responses.</text>
+          </view>
+          <text class="menu-pill">Support</text>
+        </view>
+
         <view class="card menu-card" @click="goStoreBooking">
           <view class="menu-copy">
             <text class="menu-title">Reserve at a Store</text>
@@ -117,6 +125,13 @@ export default {
       }
       uni.switchTab({ url: '/pages/orders/orders' })
     },
+    goFeedback() {
+      if (!this.isLoggedIn) {
+        uni.navigateTo({ url: '/pages/login/login' })
+        return
+      }
+      uni.navigateTo({ url: '/pages/feedback/feedback' })
+    },
     goStoreBooking() {
       uni.navigateTo({ url: '/pages/store-booking/store-booking' })
     },
@@ -158,18 +173,18 @@ export default {
   width: 132rpx;
   height: 132rpx;
   border-radius: 50%;
-  background: linear-gradient(135deg, #efff84 0%, #e2ff6b 100%);
+  background: linear-gradient(135deg, #5a8b62 0%, #4a7c52 100%);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 20rpx 44rpx rgba(226, 255, 107, 0.24);
+  box-shadow: 0 20rpx 44rpx rgba(74, 124, 82, 0.28);
   flex-shrink: 0;
 }
 
 .avatar-text {
   font-size: 48rpx;
   font-weight: 700;
-  color: #111111;
+  color: #ffffff;
 }
 
 .profile-copy-block {
@@ -206,7 +221,7 @@ export default {
   padding: 0 24rpx;
   border-radius: 999rpx;
   background: #effad7;
-  color: #5d8c22;
+  color: #4a7c52;
   font-size: 24rpx;
   font-weight: 700;
 }
@@ -251,7 +266,7 @@ export default {
   padding: 0 22rpx;
   border-radius: 999rpx;
   background: #effad7;
-  color: #5d8c22;
+  color: #4a7c52;
   font-size: 24rpx;
   font-weight: 700;
 }

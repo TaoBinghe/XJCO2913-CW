@@ -45,6 +45,12 @@ function handleUnauthorized(reject) {
 }
 
 function handleBusinessResponse(res, resolve, reject) {
+  console.log('[api] response', {
+    statusCode: res.statusCode,
+    dataCode: res.data?.code,
+    message: res.data?.message
+  })
+
   if (res.statusCode === 401) {
     handleUnauthorized(reject)
     return
@@ -63,9 +69,20 @@ function handleBusinessResponse(res, resolve, reject) {
 function requestByCloudContainer(method, finalPath, finalData, header) {
   if (!WX_CLOUD_ENV_ID || !WX_CLOUD_SERVICE) {
     const error = new Error('WeChat cloud hosting config is incomplete')
+    console.error('[api] cloud hosting config is incomplete', {
+      env: WX_CLOUD_ENV_ID,
+      service: WX_CLOUD_SERVICE
+    })
     uni.showToast({ title: 'Cloud config missing', icon: 'none' })
     return Promise.reject(error)
   }
+
+  console.log('[api] callContainer request', {
+    env: WX_CLOUD_ENV_ID,
+    service: WX_CLOUD_SERVICE,
+    method,
+    path: finalPath
+  })
 
   return new Promise((resolve, reject) => {
     wx.cloud.callContainer({
@@ -83,6 +100,13 @@ function requestByCloudContainer(method, finalPath, finalData, header) {
         handleBusinessResponse(res, resolve, reject)
       },
       fail(err) {
+        console.error('[api] callContainer failed', {
+          env: WX_CLOUD_ENV_ID,
+          service: WX_CLOUD_SERVICE,
+          method,
+          path: finalPath,
+          err
+        })
         uni.showToast({ title: 'Network error', icon: 'none' })
         reject(err)
       }
@@ -93,15 +117,23 @@ function requestByCloudContainer(method, finalPath, finalData, header) {
 function requestByHttp(method, finalPath, finalData, header) {
   if (!BASE_URL) {
     const error = new Error('VITE_API_BASE_URL is not configured')
+    console.error('[api] HTTP base URL is missing')
     uni.showToast({ title: 'API address not configured', icon: 'none' })
     return Promise.reject(error)
   }
 
   if (!ABSOLUTE_HTTP_URL_RE.test(BASE_URL)) {
     const error = new Error(`HTTP fallback needs an absolute API URL, got: ${BASE_URL}`)
+    console.error('[api] HTTP base URL must be absolute', { baseUrl: BASE_URL })
     uni.showToast({ title: 'API URL must be absolute', icon: 'none' })
     return Promise.reject(error)
   }
+
+  console.log('[api] HTTP request', {
+    baseUrl: BASE_URL,
+    method,
+    path: finalPath
+  })
 
   return new Promise((resolve, reject) => {
     uni.request({
@@ -113,6 +145,12 @@ function requestByHttp(method, finalPath, finalData, header) {
         handleBusinessResponse(res, resolve, reject)
       },
       fail(err) {
+        console.error('[api] HTTP request failed', {
+          baseUrl: BASE_URL,
+          method,
+          path: finalPath,
+          err
+        })
         uni.showToast({ title: 'Network error', icon: 'none' })
         reject(err)
       }
