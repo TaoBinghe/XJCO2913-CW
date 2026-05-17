@@ -37,6 +37,30 @@
         </view>
 
         <template v-if="aiSupportOpen">
+          <view class="ai-quick-actions">
+            <button
+              class="ai-quick-chip"
+              :disabled="chatLoading"
+              @click="applyQuickPrompt('book')"
+            >
+              Book a scooter
+            </button>
+            <button
+              class="ai-quick-chip"
+              :disabled="chatLoading"
+              @click="applyQuickPrompt('fault')"
+            >
+              Report a fault
+            </button>
+            <button
+              class="ai-quick-chip"
+              :disabled="chatLoading"
+              @click="goStoreBooking"
+            >
+              View manual booking
+            </button>
+          </view>
+
           <scroll-view
             scroll-y
             class="ai-chat-window"
@@ -59,7 +83,7 @@
             <view v-if="chatLoading" id="profile-chat-loading" class="chat-row chat-row-assistant">
               <view class="chat-bubble chat-bubble-assistant">
                 <text class="chat-label">AI Support</text>
-                <text class="chat-text">Checking the fault report details...</text>
+                <text class="chat-text">Checking the details...</text>
               </view>
             </view>
           </scroll-view>
@@ -70,8 +94,16 @@
           </view>
 
           <view v-if="chatBookingSubmitted" class="ai-submit-status">
-            <text>Booking created.</text>
-            <button class="btn-outline ai-track-btn" @click="goOrders">View Orders</button>
+            <view class="ai-status-copy">
+              <text class="ai-status-title">Booking created.</text>
+              <text v-if="lastBooking" class="ai-status-meta">
+                Booking #{{ lastBooking.bookingId || '-' }} · {{ lastBooking.storeName || 'Store reservation' }}
+              </text>
+              <text v-if="lastBooking" class="ai-status-meta">
+                {{ formatAiBookingTime(lastBooking.appointmentStart) }} · {{ formatAiBookingPeriod(lastBooking.hiredPeriod) }}
+              </text>
+            </view>
+            <button class="btn-outline ai-track-btn" @click="goLastBooking">View Order</button>
           </view>
 
           <view class="chat-input-row">
@@ -80,7 +112,7 @@
               class="chat-input"
               maxlength="1000"
               auto-height
-              placeholder="Type your message — fault details, booking request, or ask a question"
+              placeholder="Try: I want to book tomorrow at 2pm, or report a scooter fault"
               placeholder-style="color: #9ca59a"
               :disabled="chatLoading"
             />
@@ -150,11 +182,16 @@
 </template>
 
 <script>
-import { chatFaultReport } from '@/api/feedback'
+import { chatAiAssistant } from '@/api/feedback'
 import { getToken, getUsername, clearAll } from '@/utils/auth'
+import { formatPeriod, formatTime } from '@/utils/booking'
 
-const INITIAL_AI_MESSAGE = 'Hi, I can help with scooter fault reports and store reservations. For faults: send your order ID, scooter code, and what happened. For bookings: just tell me you want to book a scooter. I will ask one question at a time.'
-const CHAT_HISTORY_LIMIT = 10
+const INITIAL_AI_MESSAGE = 'Hi, I can help with store reservations and scooter fault reports. To book, just tell me naturally, like "tomorrow at 2pm for 4 hours". I will ask one question at a time.'
+const CHAT_HISTORY_LIMIT = 12
+const QUICK_PROMPTS = {
+  book: 'I want to book a scooter tomorrow at 2pm.',
+  fault: 'I need to report a scooter fault.'
+}
 
 export default {
   data() {
@@ -169,6 +206,7 @@ export default {
       chatLoading: false,
       chatIssueSubmitted: false,
       chatBookingSubmitted: false,
+      lastBooking: null,
       chatScrollTarget: ''
     }
   },
@@ -221,6 +259,10 @@ export default {
       uni.navigateTo({ url: '/pages/feedback/feedback' })
     },
     goStoreBooking() {
+      if (!this.isLoggedIn) {
+        uni.navigateTo({ url: '/pages/login/login' })
+        return
+      }
       uni.navigateTo({ url: '/pages/store-booking/store-booking' })
     },
     goScanRide() {
@@ -231,6 +273,12 @@ export default {
       if (this.aiSupportOpen) {
         this.scrollChatToEnd()
       }
+    },
+    applyQuickPrompt(type) {
+      if (this.chatLoading) {
+        return
+      }
+      this.chatInput = QUICK_PROMPTS[type] || ''
     },
     normalizeChatHistory() {
       return this.chatMessages
@@ -257,7 +305,23 @@ export default {
       this.chatLoading = false
       this.chatIssueSubmitted = false
       this.chatBookingSubmitted = false
+      this.lastBooking = null
       this.chatScrollTarget = ''
+    },
+    formatAiBookingTime(value) {
+      return formatTime(value)
+    },
+    formatAiBookingPeriod(value) {
+      return formatPeriod(value)
+    },
+    goLastBooking() {
+      if (this.lastBooking?.bookingId) {
+        uni.navigateTo({
+          url: `/pages/order-detail/order-detail?bookingId=${this.lastBooking.bookingId}`
+        })
+        return
+      }
+      this.goOrders()
     },
     async handleChatSend() {
       if (!this.isLoggedIn) {
@@ -275,10 +339,11 @@ export default {
       this.chatLoading = true
       this.chatIssueSubmitted = false
       this.chatBookingSubmitted = false
+      this.lastBooking = null
       this.scrollChatToEnd()
 
       try {
-        const res = await chatFaultReport({ message, history })
+        const res = await chatAiAssistant({ message, history })
         const reply = res.data?.reply || 'I could not read that response. Please try again.'
         this.chatMessages.push({ role: 'assistant', content: reply })
         if (res.data?.issue) {
@@ -286,13 +351,14 @@ export default {
           uni.showToast({ title: 'Fault report submitted', icon: 'success' })
         }
         if (res.data?.booking) {
+          this.lastBooking = res.data.booking
           this.chatBookingSubmitted = true
           uni.showToast({ title: 'Booking created', icon: 'success' })
         }
       } catch (e) {
         this.chatMessages.push({
           role: 'assistant',
-          content: e?.message || 'AI Support is unavailable right now. You can still submit feedback from the Feedback page.'
+          content: e?.message || 'AI Support is unavailable right now. You can still use Reserve at a Store or Feedback to finish this manually.'
         })
       } finally {
         this.chatLoading = false
@@ -363,6 +429,32 @@ export default {
   font-size: 22rpx;
   font-weight: 700;
   text-align: center;
+}
+
+.ai-quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 22rpx;
+}
+
+.ai-quick-chip {
+  min-width: 0;
+  margin: 0;
+  padding: 0 20rpx;
+  border-radius: 999rpx;
+  background: #f7fbeb;
+  border: 2rpx solid #dceec0;
+  color: #4a7c52;
+  font-size: 23rpx;
+  font-weight: 700;
+  line-height: 58rpx;
+}
+
+.ai-quick-chip[disabled] {
+  color: #a9b3a3;
+  background: #f5f6f2;
+  border-color: #e7ebdf;
 }
 
 .ai-chat-window {
@@ -445,6 +537,26 @@ export default {
   color: #4a7c52;
   font-size: 23rpx;
   font-weight: 700;
+}
+
+.ai-status-copy {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6rpx;
+}
+
+.ai-status-title {
+  font-size: 24rpx;
+  color: #4a7c52;
+}
+
+.ai-status-meta {
+  font-size: 22rpx;
+  line-height: 1.35;
+  color: #66715f;
+  word-break: break-word;
 }
 
 .ai-track-btn {

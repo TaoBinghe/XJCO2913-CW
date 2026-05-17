@@ -33,6 +33,6 @@ amap:
   web-service-key: ${AMAP_WEB_SERVICE_KEY:}
 
 dashscope:
-  api-key: ${DASHSCOPE_API_KEY:sk-80b55f68eb834643900a311ea1545da9}
+  api-key: ${DASHSCOPE_API_KEY:sk-e240f444368145be8ff0782805af0b71}
   base-url: ${DASHSCOPE_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}
-  model: ${DASHSCOPE_MODEL:qwen-plus}
+  model: ${DASHSCOPE_MODEL:qwen3.6-flash}
