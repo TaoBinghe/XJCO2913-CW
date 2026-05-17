@@ -86,13 +86,13 @@ public class FaultReportAgentServiceImpl implements FaultReportAgentService {
             .build();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    @Value("${dashscope.api-key}")
+    @Value("${dashscope.api-key:}")
     private String apiKey;
 
-    @Value("${dashscope.base-url}")
+    @Value("${dashscope.base-url:https://dashscope.aliyuncs.com/compatible-mode/v1}")
     private String baseUrl;
 
-    @Value("${dashscope.model}")
+    @Value("${dashscope.model:qwen-plus}")
     private String model;
 
     @Autowired
@@ -113,7 +113,7 @@ public class FaultReportAgentServiceImpl implements FaultReportAgentService {
             return parseResponse(llmResponse);
         } catch (Exception e) {
             log.error("Fault report agent error", e);
-            return new FaultReportChatResponse("The system encountered an error processing your report. Please try again later.");
+            return new FaultReportChatResponse("The system encountered an error processing your request. Please try again later.");
         }
     }
 
