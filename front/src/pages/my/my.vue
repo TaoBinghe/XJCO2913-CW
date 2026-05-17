@@ -30,8 +30,8 @@
       <view v-if="isLoggedIn" class="card ai-support-card" :class="{ 'ai-support-card-collapsed': !aiSupportOpen }">
         <view class="ai-support-head" @click="toggleAiSupport">
           <view class="ai-support-copy-block">
-            <text class="section-title">AI Fault Assistant</text>
-            <text v-if="aiSupportOpen" class="ai-support-copy">Report a scooter fault by chat. The assistant will collect the order ID, scooter code, and fault details.</text>
+            <text class="section-title">AI Assistant</text>
+            <text v-if="aiSupportOpen" class="ai-support-copy">Report a scooter fault or book a store reservation by chat. The assistant will ask one question at a time.</text>
           </view>
           <text class="ai-support-pill">{{ aiSupportToggleLabel }}</text>
         </view>
@@ -69,13 +69,18 @@
             <button class="btn-outline ai-track-btn" @click="goFeedback">Track in Feedback</button>
           </view>
 
+          <view v-if="chatBookingSubmitted" class="ai-submit-status">
+            <text>Booking created.</text>
+            <button class="btn-outline ai-track-btn" @click="goOrders">View Orders</button>
+          </view>
+
           <view class="chat-input-row">
             <textarea
               v-model="chatInput"
               class="chat-input"
               maxlength="1000"
               auto-height
-              placeholder="Type fault details, order ID, or scooter code"
+              placeholder="Type your message — fault details, booking request, or ask a question"
               placeholder-style="color: #9ca59a"
               :disabled="chatLoading"
             />
@@ -148,7 +153,7 @@
 import { chatFaultReport } from '@/api/feedback'
 import { getToken, getUsername, clearAll } from '@/utils/auth'
 
-const INITIAL_AI_MESSAGE = 'Hi, I can help submit a scooter fault report. Send your order ID, scooter code, and what happened. I will ask for one missing detail at a time.'
+const INITIAL_AI_MESSAGE = 'Hi, I can help with scooter fault reports and store reservations. For faults: send your order ID, scooter code, and what happened. For bookings: just tell me you want to book a scooter. I will ask one question at a time.'
 const CHAT_HISTORY_LIMIT = 10
 
 export default {
@@ -163,6 +168,7 @@ export default {
       aiSupportOpen: false,
       chatLoading: false,
       chatIssueSubmitted: false,
+      chatBookingSubmitted: false,
       chatScrollTarget: ''
     }
   },
@@ -250,6 +256,7 @@ export default {
       this.aiSupportOpen = false
       this.chatLoading = false
       this.chatIssueSubmitted = false
+      this.chatBookingSubmitted = false
       this.chatScrollTarget = ''
     },
     async handleChatSend() {
@@ -267,15 +274,20 @@ export default {
       this.chatInput = ''
       this.chatLoading = true
       this.chatIssueSubmitted = false
+      this.chatBookingSubmitted = false
       this.scrollChatToEnd()
 
       try {
         const res = await chatFaultReport({ message, history })
-        const reply = res.data?.reply || 'I could not read that response. Please try describing the fault again.'
+        const reply = res.data?.reply || 'I could not read that response. Please try again.'
         this.chatMessages.push({ role: 'assistant', content: reply })
         if (res.data?.issue) {
           this.chatIssueSubmitted = true
           uni.showToast({ title: 'Fault report submitted', icon: 'success' })
+        }
+        if (res.data?.booking) {
+          this.chatBookingSubmitted = true
+          uni.showToast({ title: 'Booking created', icon: 'success' })
         }
       } catch (e) {
         this.chatMessages.push({
