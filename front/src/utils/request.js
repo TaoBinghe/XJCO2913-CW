@@ -7,6 +7,7 @@ const WX_CLOUD_SERVICE = (import.meta.env.VITE_WX_CLOUD_SERVICE || DEFAULT_WX_CL
 const MP_WEIXIN_REQUEST_MODE = (import.meta.env.VITE_MP_WEIXIN_REQUEST_MODE || 'cloud').trim().toLowerCase()
 const BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '')
 const ABSOLUTE_HTTP_URL_RE = /^https?:\/\//i
+const WX_CLOUD_TIMEOUT = 15000
 
 function buildQueryString(params = {}) {
   return Object.keys(params)
@@ -92,6 +93,7 @@ function requestByCloudContainer(method, finalPath, finalData, header) {
       path: finalPath,
       method,
       data: finalData,
+      timeout: WX_CLOUD_TIMEOUT,
       header: {
         ...header,
         'X-WX-SERVICE': WX_CLOUD_SERVICE
@@ -107,7 +109,11 @@ function requestByCloudContainer(method, finalPath, finalData, header) {
           path: finalPath,
           err
         })
-        uni.showToast({ title: 'Network error', icon: 'none' })
+        const errMsg = String(err?.errMsg || '')
+        const title = errMsg.includes('102002')
+          ? 'AI is taking too long. Please try again.'
+          : 'Network error'
+        uni.showToast({ title, icon: 'none' })
         reject(err)
       }
     })

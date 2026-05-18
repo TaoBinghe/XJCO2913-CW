@@ -17,10 +17,14 @@ export function getMyFeedbackIssues(bookingId) {
   })
 }
 
-export function chatFaultReport(data) {
+export function chatAiAssistant(data) {
   return request({
     url: '/fault-report/chat',
     method: 'POST',
     data
   })
+}
+
+export function chatFaultReport(data) {
+  return chatAiAssistant(data)
 }
