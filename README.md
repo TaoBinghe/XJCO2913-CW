@@ -14,6 +14,7 @@ The project is organized as a three-part application:
 - Guangkai Shang - scrum master
 - Zhengyu Hong - test engineer
 - Letian Lin - frontend engineer
+- Chenyang Jin - documentation engineer
 
 ## Screenshots
 
