@@ -10,7 +10,7 @@ The project is organized as a three-part application:
 
 ## Team Members
 
-- BingheTao - backend engineer
+- Binghe Tao - backend engineer
 - Guangkai Shang - scrum master
 - Zhengyu Hong - test engineer
 - Letian Lin - frontend engineer
